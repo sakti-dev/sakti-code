@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Relocate mission worktrees under `~/.sakti/projects/`, symlink `node_modules` so missions can run the project's scripts, and commit the SDD change content onto the mission branch (keeping the main repo clean) — gated by a "clean working tree" guardrail in the transition tool.
+**Goal:** Relocate mission worktrees under `~/.sakti/projects/`, symlink configured dependency/cache dirs so missions can run the project's scripts across languages, and commit the SDD change content onto the mission branch (keeping the main repo clean) — gated by a "clean working tree" guardrail in the transition tool.
 
-**Architecture:** Worktrees move from a sibling `<repo>-worktrees/<change>` dir to `~/.sakti/projects/<projectBasename>--<changeName>` (collision-safe). At plan→mission graduation the server creates the worktree, copies `.sakti/changes/<change>/` into it and commits it as the branch's first commit, removes the copy from main (main stays clean), and symlinks the main repo's `node_modules` into the worktree. The transition tool's pre-flight refuses graduation when the working tree is dirty outside `.sakti/changes/<activeChange>/`.
+**Architecture:** Worktrees move from a sibling `<repo>-worktrees/<change>` dir to `~/.sakti/projects/<projectBasename>--<changeName>` (collision-safe). At plan→mission graduation the server creates the worktree, copies `.sakti/changes/<change>/` into it and commits it as the branch's first commit, symlinks configured dependency/cache dirs from main into the worktree, and removes the copy from main (main stays clean). The transition tool's pre-flight refuses graduation when the working tree is dirty outside `.sakti/changes/<activeChange>/`.
 
 **Tech Stack:** TypeScript, node:sqlite + Drizzle, Hono, node:fs (`cpSync`/`symlinkSync`/`rmSync`), git via `execSync`, Vitest, `vp` toolchain.
 
@@ -15,22 +15,27 @@
 ```bash
 vp run '@sakti-code/server#test'            # server tests
 vp run '@sakti-code/server#test' -- src/lib/__tests__/worktree.test.ts   # one file
-vp run desktop#test                         # desktop tests
+vp run 'desktop#test'                       # desktop tests
 vp run -r test                              # all tests (3 pre-existing sakti baseline failures expected)
 vp check                                    # format + lint + typecheck
 ```
 
 **Conventions:** TDD. `exactOptionalPropertyTypes: true` (conditional spread, never assign `undefined`). Tests in `__tests__/`, vitest (`vite-plus/test`). No `.only`/`.skip`. Arrow callbacks, `for...of`, `const`, `as const`. Git ops via `execSync` with `shell: "/bin/sh"` (TS 7.0). No comments unless asked.
 
+**Intermediate verification note:** Tasks 2–8 intentionally refactor shared worktree signatures before every production caller is updated. During those tasks, run only the task-specific targeted tests listed in each task. `vp check`, full server tests, and `confirm.test.ts` are expected to be red until Task 8 completes the confirm-route wiring. Task 10 is the first full-repo verification gate.
+
 **Context for the implementer:**
 
 - `apps/server/src/lib/config-dirs.ts` — `getAgentDir()` → `~/.sakti/agent` (env-overridable via `SAKTI_AGENT_DIR`). `dirname(getAgentDir())` = `~/.sakti/` (the data root; logs and `sessions.db` are siblings). Add the worktree base here.
-- `apps/server/src/lib/worktree.ts` — current ops: `detectDefaultBranch`, `preflightWorktree(cwd)`, `worktreePathFor(projectCwd, changeName)` (sibling dir), `createMissionWorktree(projectCwd, changeName)`, `removeMissionWorktree(projectCwd, changeName)`. This plan reworks location, preflight, and adds absorb/clean/symlink.
-- `apps/server/src/routes/sessions/confirm.ts` — plan→mission block (inside the approve `try`) currently: resolve changeName → `createMissionWorktree` → stamp `worktreePath`+`changeName`. This plan inserts absorb → clean → symlink and passes `projectId`.
+- `apps/server/src/lib/worktree.ts` — current ops: `detectDefaultBranch`, `preflightWorktree(cwd)`, `worktreePathFor(projectCwd, changeName)` (sibling dir), `createMissionWorktree(projectCwd, changeName)`, `removeMissionWorktree(projectCwd, changeName)`. This plan reworks location, preflight, and adds absorb/clean/dependency-symlink helpers.
+- `apps/server/src/lib/worktree-settings.ts` — new resolver for curated dependency symlink dirs plus global `settings.json` override.
+- `apps/server/src/routes/sessions/confirm.ts` — plan→mission block (inside the approve `try`) currently: resolve changeName → `createMissionWorktree` → stamp `worktreePath`+`changeName`. This plan inserts absorb → dependency symlink → clean and passes `projectId`.
+- `apps/server/src/lib/settings-file-store.ts` / `apps/server/src/routes/settings.ts` — global settings live in `~/.sakti/agent/settings.json` and are already read through `ctx.settingsFile.read()`. The override key is `worktree.dependencySymlinkDirs`.
 - `apps/server/src/agent/config/tool-registry.ts` — `wrapTransitionTool` calls `preflightWorktree(ctx.cwd)` when `to === "mission"`. This plan resolves the active change and passes it so preflight can check the working tree is clean.
 - `apps/server/src/agent/config/resolve-change-name.ts` — `resolveActiveChangeName(projectCwd)` → most-recently-modified change slug in `.sakti/changes/`, or null.
-- `apps/desktop/src/components/onboarding/plan-chat.tsx` — `handleConfirmSession` reads `changeName` from the plan session post-confirm and calls `createSession(projectId, title, changeName)` but **never passes `worktreePath`** (v1 bug). The mission is born with `worktreePath: null` and runs unisolated. This plan fixes it (Task 8) — a prerequisite for v2 doing anything.
-- The DB column `sessions.worktreePath` already exists; the server `POST /api/sessions` already accepts `worktreePath`; the desktop `createSession` signature already has the 4th `worktreePath?` param. Only the call site is wrong.
+- `apps/desktop/src/components/onboarding/plan-chat.tsx` — `handleConfirmSession` reads `changeName` from the plan session post-confirm and calls `createSession(projectId, title, changeName)` but **never passes `worktreePath`** (v1 bug). The mission is born with `worktreePath: null` and runs unisolated. This plan fixes it (Task 9) — a prerequisite for v2 doing anything.
+- `apps/desktop/src/stores/server/actions.ts` — desktop `createSession` currently accepts only `(projectId, title?, changeName?)` and posts only those fields. Task 9 adds the 4th `worktreePath?` parameter and sends it to the server.
+- The DB column `sessions.worktreePath` already exists; the server `POST /api/sessions` already accepts `worktreePath`. The missing pieces are the desktop action signature/body and the plan-chat call site.
 - `git status --porcelain` output format: two status chars then a space then `path` (paths are relative to the repo root, quoted if special). For tracking we only care whether each path starts with `.sakti/changes/<change>/`.
 
 ---
@@ -47,13 +52,12 @@ vp check                                    # format + lint + typecheck
 Add to `apps/server/src/lib/__tests__/config-dirs.test.ts`:
 
 ```ts
+import { dirname, join } from "node:path";
 import { getWorktreeBaseDir } from "../config-dirs.ts";
 
 it("getWorktreeBaseDir is a sibling of the agent dir (<parent>/projects)", () => {
   process.env.SAKTI_AGENT_DIR = "/tmp/sakti-test-agent";
-  expect(getWorktreeBaseDir()).toBe("/tmp/sakti-test-agent/../projects");
-  // Normalize: it lives under the same parent as the agent dir.
-  const { dirname } = await import("node:path");
+  expect(getWorktreeBaseDir()).toBe(join(dirname("/tmp/sakti-test-agent"), "projects"));
   expect(dirname(getWorktreeBaseDir())).toBe(dirname("/tmp/sakti-test-agent"));
   delete process.env.SAKTI_AGENT_DIR;
 });
@@ -102,7 +106,7 @@ git commit -m "feat(server): worktree base dir resolver (~/.sakti/projects)"
 
 ---
 
-## Task 2: New worktree location + collision suffix
+## Task 2: New worktree location + create/remove signatures
 
 **Files:**
 
@@ -144,13 +148,50 @@ describe("worktreePathFor", () => {
 
 Add the imports `mkdirSync` to the existing `node:fs` import at the top of the test file.
 
+Update the existing create/remove tests to the new signatures in the same file. For example, update the removal test to this shape:
+
+```ts
+it("removeMissionWorktree removes the dir but keeps the branch", () => {
+  initGitRepo(projectDir);
+  const wt = createMissionWorktree(projectDir, "proj-test001", "add-feature");
+  removeMissionWorktree(projectDir, wt);
+  expect(existsSync(wt)).toBe(false);
+  const branch = execSync("git branch --list sakti/add-feature", {
+    cwd: projectDir,
+    shell: "/bin/sh",
+  }).toString();
+  expect(branch).toContain("sakti/add-feature");
+});
+```
+
+Apply the same signature shape to every existing `createMissionWorktree` and `removeMissionWorktree` call in that describe block. For the reuse test, both creations must use the same projectId so the collision logic produces the same path.
+
+Set `SAKTI_AGENT_DIR` to a temp dir in `beforeEach` so `getWorktreeBaseDir()` resolves to a writable temp spot, and clean it in `afterEach`:
+
+```ts
+beforeEach(() => {
+  projectDir = mkdtempSync(join(tmpdir(), "sakti-wt-"));
+  process.env.SAKTI_AGENT_DIR = join(projectDir, "agent");
+});
+
+afterEach(() => {
+  try {
+    execSync("git worktree prune", { cwd: projectDir, shell: "/bin/sh", stdio: "ignore" });
+  } catch {
+    // ignore
+  }
+  rmSync(projectDir, { recursive: true, force: true });
+  delete process.env.SAKTI_AGENT_DIR;
+});
+```
+
 ### Step 2: Run test to verify it fails
 
 ```bash
 vp run '@sakti-code/server#test' -- src/lib/__tests__/worktree.test.ts
 ```
 
-Expected: FAIL (current `worktreePathFor` takes 2 args and returns the sibling dir).
+Expected: FAIL (current `worktreePathFor` takes 2 args, create/remove use the old signatures, and paths still use the sibling dir).
 
 ### Step 3: Implement
 
@@ -182,6 +223,44 @@ export function worktreePathFor(
 }
 ```
 
+Replace `createMissionWorktree` and `removeMissionWorktree` so the file compiles and all worktree path tests can pass:
+
+```ts
+export function createMissionWorktree(
+  projectCwd: string,
+  projectId: string,
+  changeName: string,
+): string {
+  const base = getWorktreeBaseDir();
+  mkdirSync(base, { recursive: true });
+  try {
+    git(projectCwd, "worktree prune");
+  } catch {
+    // ignore
+  }
+  const wtPath = worktreePathFor(base, projectCwd, projectId, changeName);
+  const branch = `sakti/${changeName}`;
+  if (branchExists(projectCwd, branch)) {
+    git(projectCwd, `worktree add "${wtPath}" ${branch}`);
+  } else {
+    const detected = detectDefaultBranch(projectCwd);
+    if (!detected) {
+      throw new Error(`Cannot create worktree: no default branch detected in "${projectCwd}"`);
+    }
+    git(projectCwd, `worktree add -b ${branch} "${wtPath}" ${detected}`);
+  }
+  return wtPath;
+}
+
+export function removeMissionWorktree(projectCwd: string, wtPath: string): void {
+  try {
+    git(projectCwd, `worktree remove --force "${wtPath}"`);
+  } catch {
+    // Best-effort; the worktree may already be gone.
+  }
+}
+```
+
 Remove the old 2-arg `worktreePathFor`. Keep the `basename`/`join` imports; drop `dirname` if now unused.
 
 ### Step 4: Run test to verify it passes
@@ -190,13 +269,13 @@ Remove the old 2-arg `worktreePathFor`. Keep the `basename`/`join` imports; drop
 vp run '@sakti-code/server#test' -- src/lib/__tests__/worktree.test.ts
 ```
 
-Expected: PASS for the new `worktreePathFor` tests. (Existing create/remove tests will now FAIL — they're updated in Task 5. That's expected mid-plan.)
+Expected: PASS for all worktree location/create/remove tests.
 
 ### Step 5: Commit
 
 ```bash
 git add apps/server/src/lib/worktree.ts apps/server/src/lib/__tests__/worktree.test.ts
-git commit -m "feat(server): worktree location under ~/.sakti/projects with collision suffix"
+git commit -m "feat(server): worktree location under ~/.sakti/projects"
 ```
 
 ---
@@ -243,9 +322,7 @@ describe("absorbChangeContent", () => {
 });
 ```
 
-Add `createMissionWorktree` to the existing import list (it already exports it). The `initGitRepo` helper already exists in the file.
-
-> Note: this task's test calls `createMissionWorktree` with the NEW 3-arg signature `(projectCwd, projectId, changeName)`. That signature is implemented in Task 5. To keep tasks independently green, implement the `createMissionWorktree` signature change FIRST within this task's Step 3 (it's mechanical — see Task 5 Step 3). Alternatively, run this task's test expecting FAIL until Task 5. Simplest: do the signature bump here.
+Add `createMissionWorktree` to the existing import list if it is not already present. The `initGitRepo` helper already exists in the file.
 
 ### Step 2: Run test to verify it fails
 
@@ -257,7 +334,7 @@ Expected: FAIL (`absorbChangeContent` not exported).
 
 ### Step 3: Implement
 
-In `apps/server/src/lib/worktree.ts`, add (and bump `createMissionWorktree`/`removeMissionWorktree` signatures per Task 5 Step 3 now, so this compiles):
+In `apps/server/src/lib/worktree.ts`, add:
 
 ```ts
 import { cpSync, existsSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
@@ -267,7 +344,8 @@ import { cpSync, existsSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
  * worktree and commit it on the mission branch as the first commit. The
  * specify agent then reads proposal.md from the worktree and writes
  * design.md/tasks.md as further commits. Idempotent-ish: a no-op (no throw)
- * when main has no change dir.
+ * when main has no change dir or when the same content is already committed on
+ * a reused mission branch.
  */
 export function absorbChangeContent(projectCwd: string, wtPath: string, changeName: string): void {
   const src = join(projectCwd, ".sakti", "changes", changeName);
@@ -276,11 +354,13 @@ export function absorbChangeContent(projectCwd: string, wtPath: string, changeNa
   mkdirSync(dest, { recursive: true });
   cpSync(src, dest, { recursive: true });
   git(wtPath, "add .sakti/changes");
+  const staged = git(wtPath, "diff --cached --name-only");
+  if (staged === "") return;
   git(wtPath, `commit -m "sakti: begin change ${changeName}"`);
 }
 ```
 
-Also apply the `createMissionWorktree` / `removeMissionWorktree` signature changes from Task 5 now (so imports compile): `createMissionWorktree(projectCwd, projectId, changeName)` and `removeMissionWorktree(projectCwd, wtPath)`.
+The `createMissionWorktree(projectCwd, projectId, changeName)` and `removeMissionWorktree(projectCwd, wtPath)` signatures were introduced in Task 2; keep using those signatures here.
 
 ### Step 4: Run test to verify it passes
 
@@ -299,7 +379,149 @@ git commit -m "feat(server): absorbChangeContent — commit change files onto th
 
 ---
 
-## Task 4: cleanMainChangeDir + symlinkNodeModules helpers
+## Task 4: Worktree dependency symlink settings resolver
+
+Resolve the curated dependency/cache directory names from global settings. Workspace-specific overrides are out of scope.
+
+**Files:**
+
+- Create: `apps/server/src/lib/worktree-settings.ts`
+- Create: `apps/server/src/lib/__tests__/worktree-settings.test.ts`
+
+### Step 1: Write failing tests
+
+Create `apps/server/src/lib/__tests__/worktree-settings.test.ts`:
+
+```ts
+import { describe, expect, it } from "vite-plus/test";
+import {
+  DEFAULT_DEPENDENCY_SYMLINK_DIRS,
+  resolveDependencySymlinkDirs,
+} from "../worktree-settings.ts";
+
+describe("resolveDependencySymlinkDirs", () => {
+  it("uses curated defaults when settings are empty", () => {
+    expect(resolveDependencySymlinkDirs({}).dirs).toEqual(DEFAULT_DEPENDENCY_SYMLINK_DIRS);
+  });
+
+  it("uses global settings override when dependencySymlinkDirs is a non-empty string array", () => {
+    const resolved = resolveDependencySymlinkDirs({
+      worktree: { dependencySymlinkDirs: ["node_modules", ".venv", "target"] },
+    });
+    expect(resolved.dirs).toEqual(["node_modules", ".venv", "target"]);
+    expect(resolved.warning).toBeUndefined();
+  });
+
+  it("deduplicates override entries and removes empty strings", () => {
+    const resolved = resolveDependencySymlinkDirs({
+      worktree: { dependencySymlinkDirs: ["node_modules", "", "node_modules", "target"] },
+    });
+    expect(resolved.dirs).toEqual(["node_modules", "target"]);
+  });
+
+  it("falls back to defaults and returns a warning for malformed override values", () => {
+    const resolved = resolveDependencySymlinkDirs({
+      worktree: { dependencySymlinkDirs: "node_modules" },
+    });
+    expect(resolved.dirs).toEqual(DEFAULT_DEPENDENCY_SYMLINK_DIRS);
+    expect(resolved.warning).toContain("worktree.dependencySymlinkDirs");
+  });
+});
+```
+
+### Step 2: Run test to verify it fails
+
+```bash
+vp run '@sakti-code/server#test' -- src/lib/__tests__/worktree-settings.test.ts
+```
+
+Expected: FAIL (module missing).
+
+### Step 3: Implement
+
+Create `apps/server/src/lib/worktree-settings.ts`:
+
+```ts
+export const DEFAULT_DEPENDENCY_SYMLINK_DIRS = [
+  "node_modules",
+  ".venv",
+  "venv",
+  "target",
+  ".cargo",
+  "vendor/bundle",
+  ".bundle",
+  ".gradle",
+  ".m2",
+  "vendor",
+  "zig-cache",
+  ".zig-cache",
+] as const;
+
+export interface DependencySymlinkDirsResult {
+  dirs: string[];
+  warning?: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeDirs(values: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const trimmed = value.trim();
+    if (trimmed === "" || seen.has(trimmed)) {
+      continue;
+    }
+    seen.add(trimmed);
+    result.push(trimmed);
+  }
+  return result;
+}
+
+export function resolveDependencySymlinkDirs(
+  settings: Record<string, unknown>,
+): DependencySymlinkDirsResult {
+  const fallback = [...DEFAULT_DEPENDENCY_SYMLINK_DIRS];
+  const worktree = settings.worktree;
+  if (!isRecord(worktree) || worktree.dependencySymlinkDirs === undefined) {
+    return { dirs: fallback };
+  }
+  const raw = worktree.dependencySymlinkDirs;
+  if (!Array.isArray(raw) || raw.some((item) => typeof item !== "string")) {
+    return {
+      dirs: fallback,
+      warning:
+        "Ignoring malformed settings.worktree.dependencySymlinkDirs; expected a string array.",
+    };
+  }
+  const dirs = normalizeDirs(raw);
+  if (dirs.length === 0) {
+    return { dirs: fallback };
+  }
+  return { dirs };
+}
+```
+
+### Step 4: Run test to verify it passes
+
+```bash
+vp run '@sakti-code/server#test' -- src/lib/__tests__/worktree-settings.test.ts
+```
+
+Expected: PASS.
+
+### Step 5: Commit
+
+```bash
+git add apps/server/src/lib/worktree-settings.ts apps/server/src/lib/__tests__/worktree-settings.test.ts
+git commit -m "feat(server): resolve worktree dependency symlink settings"
+```
+
+---
+
+## Task 5: cleanMainChangeDir + linkDependencyDirs helpers
 
 **Files:**
 
@@ -311,8 +533,8 @@ git commit -m "feat(server): absorbChangeContent — commit change files onto th
 Add to `apps/server/src/lib/__tests__/worktree.test.ts`:
 
 ```ts
-import { cleanMainChangeDir, symlinkNodeModules } from "../worktree.ts";
-import { readlinkSync } from "node:fs";
+import { cleanMainChangeDir, linkDependencyDirs } from "../worktree.ts";
+import { lstatSync, readlinkSync } from "node:fs";
 
 describe("cleanMainChangeDir", () => {
   it("removes the change dir from the main working tree", () => {
@@ -328,28 +550,53 @@ describe("cleanMainChangeDir", () => {
     initGitRepo(projectDir);
     expect(() => cleanMainChangeDir(projectDir, "absent")).not.toThrow();
   });
+
+  it("throws instead of dirtying main when the change dir is tracked", () => {
+    initGitRepo(projectDir);
+    const dir = join(projectDir, ".sakti/changes/tracked");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "proposal.md"), "x");
+    execSync("git add .sakti/changes/tracked/proposal.md", { cwd: projectDir, shell: "/bin/sh" });
+    execSync("git commit -m tracked-change", { cwd: projectDir, shell: "/bin/sh" });
+    expect(() => cleanMainChangeDir(projectDir, "tracked")).toThrow("tracked change dir");
+    const status = execSync("git status --porcelain", {
+      cwd: projectDir,
+      shell: "/bin/sh",
+    }).toString();
+    expect(status).toBe("");
+  });
 });
 
-describe("symlinkNodeModules", () => {
-  it("symlinks main's node_modules into the worktree when both exist", () => {
+describe("linkDependencyDirs", () => {
+  it("symlinks each configured dependency dir that exists in main", () => {
     initGitRepo(projectDir);
     mkdirSync(join(projectDir, "node_modules"), { recursive: true });
+    mkdirSync(join(projectDir, ".venv"), { recursive: true });
     const wt = createMissionWorktree(projectDir, "proj-cccccccc", "dep");
-    symlinkNodeModules(projectCwd(projectDir), wt);
-    const link = readlinkSync(join(wt, "node_modules"));
-    expect(link).toBe(join(projectDir, "node_modules"));
+    linkDependencyDirs(projectDir, wt, ["node_modules", ".venv", "target"]);
+    expect(readlinkSync(join(wt, "node_modules"))).toBe(join(projectDir, "node_modules"));
+    expect(readlinkSync(join(wt, ".venv"))).toBe(join(projectDir, ".venv"));
+    expect(existsSync(join(wt, "target"))).toBe(false);
   });
 
-  it("is a no-op when main has no node_modules", () => {
+  it("is a no-op when main has none of the configured dependency dirs", () => {
     initGitRepo(projectDir);
     const wt = createMissionWorktree(projectDir, "proj-dddddddd", "nodep");
-    expect(() => symlinkNodeModules(projectDir, wt)).not.toThrow();
+    expect(() => linkDependencyDirs(projectDir, wt, ["node_modules", ".venv"])).not.toThrow();
     expect(existsSync(join(wt, "node_modules"))).toBe(false);
+    expect(existsSync(join(wt, ".venv"))).toBe(false);
+  });
+
+  it("does not replace an existing worktree path", () => {
+    initGitRepo(projectDir);
+    mkdirSync(join(projectDir, "target"), { recursive: true });
+    const wt = createMissionWorktree(projectDir, "proj-eeeeeeee", "existing");
+    mkdirSync(join(wt, "target"), { recursive: true });
+    linkDependencyDirs(projectDir, wt, ["target"]);
+    expect(lstatSync(join(wt, "target")).isSymbolicLink()).toBe(false);
   });
 });
 ```
-
-(`projectCwd` is just `projectDir` here — the helper isn't required; drop the wrapper and pass `projectDir` directly if cleaner.)
 
 ### Step 2: Run test to verify it fails
 
@@ -368,27 +615,48 @@ In `apps/server/src/lib/worktree.ts`, add:
  * Remove `.sakti/changes/<change>/` from the main working tree after its
  * content has been committed onto the mission branch. Keeps the main repo
  * clean (the content returns to main only via merge of `sakti/<change>`).
- * No-op when absent. Assumes the dir is untracked (enforced by the transition
- * guardrail); a tracked dir would need `git rm` — out of scope.
+ * No-op when absent. Refuses tracked change dirs because removing tracked files
+ * would leave staged deletions on main; tracked change content must be handled
+ * by the user before graduation so "main stays clean" remains true.
  */
 export function cleanMainChangeDir(projectCwd: string, changeName: string): void {
   const dir = join(projectCwd, ".sakti", "changes", changeName);
-  if (existsSync(dir)) {
-    rmSync(dir, { recursive: true, force: true });
+  if (!existsSync(dir)) {
+    return;
   }
+  const rel = `.sakti/changes/${changeName}`;
+  const tracked = git(projectCwd, `ls-files "${rel}"`);
+  if (tracked !== "") {
+    throw new Error(
+      `Cannot clean tracked change dir "${rel}". Commit, revert, or move this change content before transitioning to mission.`,
+    );
+  }
+  rmSync(dir, { recursive: true, force: true });
 }
 
 /**
- * Symlink the main repo's `node_modules` into the worktree so the mission can
- * run the project's scripts (tests) without reinstalling. Absolute target so it
- * resolves regardless of the worktree's location. No-op when main has no
- * node_modules or the worktree already has one.
+ * Symlink configured dependency/cache dirs into the worktree so the mission can
+ * run project scripts without reinstalling. Absolute targets resolve regardless
+ * of the worktree's location. Missing main dirs and existing worktree paths are
+ * skipped.
  */
-export function symlinkNodeModules(projectCwd: string, wtPath: string): void {
-  const target = join(projectCwd, "node_modules");
-  const link = join(wtPath, "node_modules");
-  if (!existsSync(target) || existsSync(link)) return;
-  symlinkSync(target, link, "dir");
+export function linkDependencyDirs(
+  projectCwd: string,
+  wtPath: string,
+  dirs: readonly string[],
+): string[] {
+  const linked: string[] = [];
+  for (const dir of dirs) {
+    const target = join(projectCwd, dir);
+    const link = join(wtPath, dir);
+    if (!existsSync(target) || existsSync(link)) {
+      continue;
+    }
+    mkdirSync(dirname(link), { recursive: true });
+    symlinkSync(target, link, "dir");
+    linked.push(dir);
+  }
+  return linked;
 }
 ```
 
@@ -404,44 +672,33 @@ Expected: PASS.
 
 ```bash
 git add apps/server/src/lib/worktree.ts apps/server/src/lib/__tests__/worktree.test.ts
-git commit -m "feat(server): cleanMainChangeDir + symlinkNodeModules helpers"
+git commit -m "feat(server): clean main change dir and link dependency dirs"
 ```
 
 ---
 
-## Task 5: createMissionWorktree / removeMissionWorktree new signatures
+## Task 6: Branch cleanup helpers
 
-`createMissionWorktree` needs `projectId` for the collision suffix; `removeMissionWorktree` takes the authoritative stored worktree path (not a recomputed one — collision suffixes make recomputation unreliable).
+Confirm-time failure cleanup needs to know whether `sakti/<change>` existed before worktree creation, and to delete a newly-created branch when post-create work fails.
 
 **Files:**
 
 - Modify: `apps/server/src/lib/worktree.ts`
 - Modify: `apps/server/src/lib/__tests__/worktree.test.ts`
 
-### Step 1: Update the existing create/remove tests to the new signatures
+### Step 1: Write failing tests
 
-In `apps/server/src/lib/__tests__/worktree.test.ts`, the existing tests in `describe("createMissionWorktree + removeMissionWorktree", ...)` call `createMissionWorktree(projectDir, "add-feature")` and `removeMissionWorktree(projectDir, "add-feature")`. Update them:
-
-```ts
-// createMissionWorktree gains a projectId arg (3rd); removeMissionWorktree
-// takes the stored worktree path (2nd) instead of changeName.
-const wt = createMissionWorktree(projectDir, "proj-test001", "add-feature");
-// ...
-removeMissionWorktree(projectDir, wt);
-```
-
-Apply to every existing call in that describe block (the "creates a worktree…", "removes the dir but keeps the branch", and "reuses a surviving branch" tests). For the reuse test, both creations must use the same projectId so the collision logic produces the same path.
-
-Set `SAKTI_AGENT_DIR` to a temp dir in `beforeEach` (so `getWorktreeBaseDir()` resolves to a writable tmp spot) and clean it in `afterEach`:
+Add cleanup-helper tests in `apps/server/src/lib/__tests__/worktree.test.ts`:
 
 ```ts
-beforeEach(() => {
-  projectDir = mkdtempSync(join(tmpdir(), "sakti-wt-"));
-  process.env.SAKTI_AGENT_DIR = join(projectDir, "agent");
-});
-afterEach(() => {
-  // existing prune + rmSync(projectDir) ...
-  delete process.env.SAKTI_AGENT_DIR;
+it("reports and deletes mission branches by change name", () => {
+  initGitRepo(projectDir);
+  expect(missionBranchExists(projectDir, "cleanup")).toBe(false);
+  const wt = createMissionWorktree(projectDir, "proj-test001", "cleanup");
+  expect(missionBranchExists(projectDir, "cleanup")).toBe(true);
+  removeMissionWorktree(projectDir, wt);
+  deleteMissionBranch(projectDir, "cleanup");
+  expect(missionBranchExists(projectDir, "cleanup")).toBe(false);
 });
 ```
 
@@ -451,54 +708,43 @@ afterEach(() => {
 vp run '@sakti-code/server#test' -- src/lib/__tests__/worktree.test.ts
 ```
 
-Expected: FAIL (signature mismatch) until Step 3.
+Expected: FAIL (`missionBranchExists` and `deleteMissionBranch` are not exported).
 
 ### Step 3: Implement
 
-In `apps/server/src/lib/worktree.ts`, replace `createMissionWorktree` and `removeMissionWorktree`:
+In `apps/server/src/lib/worktree.ts`, export branch helpers and update `createMissionWorktree` to use `missionBranchExists`:
 
 ```ts
-export function createMissionWorktree(
-  projectCwd: string,
-  projectId: string,
-  changeName: string,
-): string {
-  const base = getWorktreeBaseDir();
-  mkdirSync(base, { recursive: true });
-  // Prune stale worktree metadata so an existsSync-collision isn't a false
-  // positive from a half-removed prior worktree.
-  try {
-    git(projectCwd, "worktree prune");
-  } catch {
-    // ignore
-  }
-  const wtPath = worktreePathFor(base, projectCwd, projectId, changeName);
-  const branch = `sakti/${changeName}`;
-  if (branchExists(projectCwd, branch)) {
-    git(projectCwd, `worktree add "${wtPath}" ${branch}`);
-  } else {
-    const detected = detectDefaultBranch(projectCwd);
-    if (!detected) {
-      throw new Error(`Cannot create worktree: no default branch detected in "${projectCwd}"`);
-    }
-    git(projectCwd, `worktree add -b ${branch} "${wtPath}" ${detected}`);
-  }
-  return wtPath;
+export function missionBranchExists(projectCwd: string, changeName: string): boolean {
+  return branchExists(projectCwd, `sakti/${changeName}`);
 }
 
 /**
- * Remove a mission worktree by its stored path. Keeps the branch. Best-effort.
+ * Delete a mission branch created during a failed graduation. Never call this
+ * for branches that existed before the current graduation attempt.
  */
-export function removeMissionWorktree(projectCwd: string, wtPath: string): void {
+export function deleteMissionBranch(projectCwd: string, changeName: string): void {
   try {
-    git(projectCwd, `worktree remove --force "${wtPath}"`);
+    git(projectCwd, `branch -D sakti/${changeName}`);
   } catch {
-    // Best-effort; the worktree may already be gone.
+    // Best-effort; the branch may already be gone.
   }
 }
 ```
 
-(`getWorktreeBaseDir` is imported from `./config-dirs.ts` — add the import if Task 2/3 didn't already.)
+In `createMissionWorktree`, replace `if (branchExists(projectCwd, branch))` with:
+
+```ts
+if (missionBranchExists(projectCwd, changeName)) {
+  git(projectCwd, `worktree add "${wtPath}" ${branch}`);
+} else {
+  const detected = detectDefaultBranch(projectCwd);
+  if (!detected) {
+    throw new Error(`Cannot create worktree: no default branch detected in "${projectCwd}"`);
+  }
+  git(projectCwd, `worktree add -b ${branch} "${wtPath}" ${detected}`);
+}
+```
 
 ### Step 4: Run tests to verify they pass
 
@@ -517,7 +763,7 @@ git commit -m "feat(server): create/removeMissionWorktree — projectId + stored
 
 ---
 
-## Task 6: Transition-tool "clean working tree" guardrail
+## Task 7: Transition-tool "clean working tree" guardrail
 
 `preflightWorktree` gains the active change name and rejects graduation when the working tree is dirty outside `.sakti/changes/<change>/`. The wrapper resolves the active change and passes it.
 
@@ -543,13 +789,34 @@ describe("preflightWorktree clean check", () => {
     expect(preflightWorktree(projectDir, "add")).toBeNull();
   });
 
+  it("passes when a tracked file under .sakti/changes/<change>/ is modified", () => {
+    initGitRepo(projectDir);
+    mkdirSync(join(projectDir, ".sakti/changes/add"), { recursive: true });
+    writeFileSync(join(projectDir, ".sakti/changes/add/proposal.md"), "x");
+    execSync("git add .sakti/changes/add/proposal.md", { cwd: projectDir, shell: "/bin/sh" });
+    execSync("git commit -m add-change", { cwd: projectDir, shell: "/bin/sh" });
+    writeFileSync(join(projectDir, ".sakti/changes/add/proposal.md"), "changed");
+    expect(preflightWorktree(projectDir, "add")).toBeNull();
+  });
+
   it("returns an error when an unrelated file is dirty", () => {
     initGitRepo(projectDir);
-    writeFileSync(join(projectDir, "src/dirty.ts"), "oops");
     mkdirSync(join(projectDir, "src"), { recursive: true });
+    writeFileSync(join(projectDir, "src/dirty.ts"), "oops");
     const err = preflightWorktree(projectDir, "add");
     expect(err).not.toBeNull();
     expect(err).toContain("clean");
+  });
+
+  it("returns an error when another .sakti path is dirty", () => {
+    initGitRepo(projectDir);
+    mkdirSync(join(projectDir, ".sakti/changes/add"), { recursive: true });
+    writeFileSync(join(projectDir, ".sakti/changes/add/proposal.md"), "x");
+    mkdirSync(join(projectDir, ".sakti/changes/other"), { recursive: true });
+    writeFileSync(join(projectDir, ".sakti/changes/other/proposal.md"), "y");
+    const err = preflightWorktree(projectDir, "add");
+    expect(err).not.toBeNull();
+    expect(err).toContain("other");
   });
 
   it("requires a fully clean tree when no active change is given", () => {
@@ -592,6 +859,10 @@ Expected: FAIL (preflight still 1-arg; wrapper doesn't resolve change).
 In `apps/server/src/lib/worktree.ts`, change `preflightWorktree` to accept the active change and check cleanliness:
 
 ```ts
+function gitRaw(cwd: string, args: string): string {
+  return execSync(`git ${args}`, { cwd, shell: "/bin/sh", encoding: "utf-8" });
+}
+
 export function preflightWorktree(cwd: string, activeChangeName: string | null): string | null {
   try {
     git(cwd, "rev-parse --is-inside-work-tree");
@@ -607,7 +878,7 @@ export function preflightWorktree(cwd: string, activeChangeName: string | null):
   // has uncommitted work that shouldn't be swept into a mission.
   let porcelain: string;
   try {
-    porcelain = git(cwd, "status --porcelain");
+    porcelain = gitRaw(cwd, "status --porcelain");
   } catch {
     porcelain = "";
   }
@@ -619,10 +890,7 @@ export function preflightWorktree(cwd: string, activeChangeName: string | null):
     // Rename arrow: "a -> b" — check the destination.
     const segs = filePath.split(" -> ");
     const checkPath = segs[segs.length - 1] ?? filePath;
-    const allowed =
-      allowedPrefix !== null
-        ? checkPath.startsWith(allowedPrefix) || checkPath.startsWith(".sakti/")
-        : false;
+    const allowed = allowedPrefix !== null ? checkPath.startsWith(allowedPrefix) : false;
     if (!allowed) {
       return `Working tree isn't clean (unexpected change: "${checkPath}"). Commit or stash your changes first, then call transition({ to: "mission" }) again.`;
     }
@@ -635,7 +903,7 @@ In `apps/server/src/agent/config/tool-registry.ts`, resolve the active change an
 
 ```ts
 import { resolveActiveChangeName } from "./resolve-change-name.ts";
-// ...
+
 function wrapTransitionTool(ctx: ToolContext): AgentTool {
   const base = createTransitionTool();
   return {
@@ -683,9 +951,9 @@ git commit -m "feat(server): transition guardrail — require a clean tree (exce
 
 ---
 
-## Task 7: Confirm route graduation sequence (absorb → clean → symlink)
+## Task 8: Confirm route graduation sequence (absorb → dependency symlink → clean)
 
-Wire the new helpers into the plan→mission approve path, passing `projectId`. Re-verify the clean invariant at confirm time (the guardrail ran pre-gate; this catches changes between gate-render and approve).
+Wire the new helpers into the plan→mission approve path, passing `projectId`. Re-verify the clean invariant at confirm time (the guardrail ran pre-gate; this catches changes between gate-render and approve). Keep main untouched until the final clean step: create worktree → absorb/commit branch content → resolve/link dependency dirs from settings → remove the untracked change dir from main → stamp the session.
 
 **Files:**
 
@@ -698,19 +966,23 @@ Wire the new helpers into the plan→mission approve path, passing `projectId`. 
 In `apps/server/src/routes/sessions/__tests__/confirm.test.ts`, extend the existing "plan→mission approve creates a worktree and stamps worktreePath" test with absorb/clean/symlink assertions:
 
 ```ts
-it("plan→mission approve absorbs change content, cleans main, symlinks node_modules", async () => {
+it("plan→mission approve absorbs change content, cleans main, symlinks dependency dirs", async () => {
   const { app, ctx } = await makeApp([confirmRoutes]);
   const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-v2-"));
   execSync("git init -b main", { cwd, shell: "/bin/sh" });
   execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
   execSync("git config user.name t", { cwd, shell: "/bin/sh" });
   execSync("git commit --allow-empty -m init", { cwd, shell: "/bin/sh" });
-  // Main has an uncommitted change dir + node_modules.
+  // Main has an uncommitted change dir + dependency/cache dirs.
   execSync(`mkdir -p ${cwd}/.sakti/changes/add-feature`, { shell: "/bin/sh" });
+  execSync(`echo "name: add-feature" > ${cwd}/.sakti/changes/add-feature/.sakti.yaml`, {
+    shell: "/bin/sh",
+  });
   execSync(`echo "# proposal" > ${cwd}/.sakti/changes/add-feature/proposal.md`, {
     shell: "/bin/sh",
   });
   execSync(`mkdir -p ${cwd}/node_modules`, { shell: "/bin/sh" });
+  execSync(`mkdir -p ${cwd}/.venv`, { shell: "/bin/sh" });
   process.env.SAKTI_AGENT_DIR = join(cwd, "agent");
 
   try {
@@ -739,8 +1011,9 @@ it("plan→mission approve absorbs change content, cleans main, symlinks node_mo
     expect(committed).toContain(".sakti/changes/add-feature/proposal.md");
     // Main cleaned — change dir gone from main.
     expect(existsSync(join(cwd, ".sakti/changes/add-feature"))).toBe(false);
-    // Deps symlinked.
+    // Dependency/cache dirs symlinked from curated defaults.
     expect(readlinkSync(join(wt, "node_modules"))).toBe(join(cwd, "node_modules"));
+    expect(readlinkSync(join(wt, ".venv"))).toBe(join(cwd, ".venv"));
     // Branch survives with the change content.
     expect(
       execSync(`git -C "${cwd}" branch --list sakti/add-feature`, { shell: "/bin/sh" }).toString(),
@@ -756,13 +1029,110 @@ Add `readlinkSync` to the test's `node:fs` import.
 
 Also update the existing archive→done teardown test: it currently pre-creates the worktree via raw `git worktree add` at the OLD sibling path. Update it to create the worktree anywhere (the path is stored on the session and passed to teardown), e.g. `${cwd}-wt/fix`, and assert removal — the location no longer matters to teardown since it uses the stored path.
 
+Add one confirm-route test for the belt-and-suspenders clean check:
+
+```ts
+it("plan→mission approve returns 500 if main gets dirty before approval", async () => {
+  const { app, ctx } = await makeApp([confirmRoutes]);
+  const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-dirty-"));
+  execSync("git init -b main", { cwd, shell: "/bin/sh" });
+  execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
+  execSync("git config user.name t", { cwd, shell: "/bin/sh" });
+  execSync("git commit --allow-empty -m init", { cwd, shell: "/bin/sh" });
+  execSync(`mkdir -p ${cwd}/.sakti/changes/add-feature ${cwd}/src`, { shell: "/bin/sh" });
+  execSync(`echo "name: add-feature" > ${cwd}/.sakti/changes/add-feature/.sakti.yaml`, {
+    shell: "/bin/sh",
+  });
+  execSync(`echo "# proposal" > ${cwd}/.sakti/changes/add-feature/proposal.md`, {
+    shell: "/bin/sh",
+  });
+  execSync(`echo "dirty" > ${cwd}/src/dirty.ts`, { shell: "/bin/sh" });
+  process.env.SAKTI_AGENT_DIR = join(cwd, "agent");
+
+  try {
+    const project = await ctx.repos.projects.create("p", cwd);
+    const session = await ctx.repos.sessions.create(project.id, {
+      kind: "plan",
+      status: "specify",
+      pendingTransitionTo: "mission",
+      pendingTransitionBody: "brief",
+    });
+
+    const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve", to: "mission", body: "brief" }),
+    });
+
+    expect(res.status).toBe(500);
+    const after = ctx.repos.sessions.findById(session.id);
+    expect(after?.pendingTransitionTo).toBe("mission");
+    expect(after?.worktreePath).toBeNull();
+  } finally {
+    delete process.env.SAKTI_AGENT_DIR;
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+```
+
+Add one confirm-route test for the global settings override:
+
+```ts
+it("plan→mission approve uses global dependency symlink override from settings.json", async () => {
+  const { app, ctx } = await makeApp([confirmRoutes]);
+  const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-deps-"));
+  execSync("git init -b main", { cwd, shell: "/bin/sh" });
+  execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
+  execSync("git config user.name t", { cwd, shell: "/bin/sh" });
+  execSync("git commit --allow-empty -m init", { cwd, shell: "/bin/sh" });
+  execSync(`mkdir -p ${cwd}/.sakti/changes/add-feature ${cwd}/custom-cache`, {
+    shell: "/bin/sh",
+  });
+  execSync(`echo "name: add-feature" > ${cwd}/.sakti/changes/add-feature/.sakti.yaml`, {
+    shell: "/bin/sh",
+  });
+  execSync(`echo "# proposal" > ${cwd}/.sakti/changes/add-feature/proposal.md`, {
+    shell: "/bin/sh",
+  });
+  ctx.settingsFile.update({
+    worktree: { dependencySymlinkDirs: ["custom-cache"] },
+  });
+  process.env.SAKTI_AGENT_DIR = join(cwd, "agent");
+
+  try {
+    const project = await ctx.repos.projects.create("p", cwd);
+    const session = await ctx.repos.sessions.create(project.id, {
+      kind: "plan",
+      status: "specify",
+      pendingTransitionTo: "mission",
+      pendingTransitionBody: "brief",
+    });
+
+    const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve", to: "mission", body: "brief" }),
+    });
+
+    expect(res.status).toBe(200);
+    const after = ctx.repos.sessions.findById(session.id);
+    expect(readlinkSync(join(after!.worktreePath!, "custom-cache"))).toBe(
+      join(cwd, "custom-cache"),
+    );
+  } finally {
+    delete process.env.SAKTI_AGENT_DIR;
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+```
+
 ### Step 2: Run tests to verify they fail
 
 ```bash
 vp run '@sakti-code/server#test' -- src/routes/sessions/__tests__/confirm.test.ts
 ```
 
-Expected: FAIL (absorb/clean/symlink not wired; assertions on committed content / readlink fail).
+Expected: FAIL (absorb/clean/dependency symlink not wired; assertions on committed content / readlink fail).
 
 ### Step 3: Implement
 
@@ -773,9 +1143,13 @@ import {
   absorbChangeContent,
   cleanMainChangeDir,
   createMissionWorktree,
+  deleteMissionBranch,
+  linkDependencyDirs,
+  missionBranchExists,
+  preflightWorktree,
   removeMissionWorktree,
-  symlinkNodeModules,
 } from "../../lib/worktree.ts";
+import { resolveDependencySymlinkDirs } from "../../lib/worktree-settings.ts";
 ```
 
 Replace the plan→mission block (currently: resolve changeName → createMissionWorktree → stamp) with:
@@ -786,11 +1160,31 @@ if (edge.from === "plan" && edge.to === "mission") {
   if (project) {
     const changeName = resolveActiveChangeName(project.cwd);
     if (changeName) {
-      const wtPath = createMissionWorktree(project.cwd, existing.projectId, changeName);
-      absorbChangeContent(project.cwd, wtPath, changeName);
-      cleanMainChangeDir(project.cwd, changeName);
-      symlinkNodeModules(project.cwd, wtPath);
-      await ctx.repos.sessions.update(id, { changeName, worktreePath: wtPath });
+      const guardErr = preflightWorktree(project.cwd, changeName);
+      if (guardErr) {
+        throw new Error(guardErr);
+      }
+      const branchPreexisted = missionBranchExists(project.cwd, changeName);
+      let wtPath: string | null = null;
+      try {
+        wtPath = createMissionWorktree(project.cwd, existing.projectId, changeName);
+        absorbChangeContent(project.cwd, wtPath, changeName);
+        const depDirs = resolveDependencySymlinkDirs(ctx.settingsFile.read());
+        if (depDirs.warning) {
+          ctx.log?.server.warn?.(depDirs.warning, { sessionId: id, projectCwd: project.cwd });
+        }
+        linkDependencyDirs(project.cwd, wtPath, depDirs.dirs);
+        cleanMainChangeDir(project.cwd, changeName);
+        await ctx.repos.sessions.update(id, { changeName, worktreePath: wtPath });
+      } catch (err) {
+        if (wtPath) {
+          removeMissionWorktree(project.cwd, wtPath);
+        }
+        if (!branchPreexisted) {
+          deleteMissionBranch(project.cwd, changeName);
+        }
+        throw err;
+      }
     } else {
       ctx.log?.server.warn?.(
         "plan→mission: no change name resolved; mission will run without a worktree",
@@ -829,64 +1223,205 @@ function buildWorktreeTeardown(
 vp run '@sakti-code/server#test' -- src/routes/sessions/__tests__/confirm.test.ts
 ```
 
-Expected: PASS. (If the existing "plan→mission approve returns 500 when worktree creation fails" test now also needs the change dir + clean setup, adjust its setup so the clean guardrail isn't what triggers — it should fail at worktree creation because the cwd isn't a git repo. Add a `.sakti/changes/broken/.sakti.yaml` so changeName resolves, but no `git init`, so `detectDefaultBranch` throws inside `createMissionWorktree`.)
+Expected: PASS.
+
+Before this step passes, update the existing "plan→mission approve returns 500 when worktree creation fails" test so it still fails at worktree creation rather than the clean guardrail. Its setup should include `.sakti/changes/broken/.sakti.yaml` and `proposal.md`, but must not run `git init`; `detectDefaultBranch` should be the failing operation.
 
 ### Step 5: Commit
 
 ```bash
 git add apps/server/src/routes/sessions/confirm.ts apps/server/src/routes/sessions/__tests__/confirm.test.ts
-git commit -m "feat(server): graduation absorbs change content, cleans main, symlinks node_modules"
+git commit -m "feat(server): graduation links dependency dirs"
 ```
 
 ---
 
-## Task 8: Desktop worktreePath carry-through (v1 bug fix)
+## Task 9: Desktop worktreePath carry-through (v1 bug fix)
 
-`plan-chat.tsx` never passes `worktreePath` to `createSession`, so missions are born with `worktreePath: null` and run unisolated. Fix the call site (the signature already accepts it). This is a prerequisite for v2 — without it the mission ignores the worktree the server just built.
+`plan-chat.tsx` never passes `worktreePath` to `createSession`, and the desktop server action currently does not accept or post `worktreePath`. Missions are born with `worktreePath: null` and run unisolated. Fix both the action boundary and the call site. This is a prerequisite for v2 — without it the mission ignores the worktree the server just built.
 
 **Files:**
 
+- Modify: `apps/desktop/src/stores/server/actions.ts`
 - Modify: `apps/desktop/src/components/onboarding/plan-chat.tsx`
+- Modify: `apps/desktop/src/stores/server/__tests__/actions.test.ts`
 - Modify: `apps/desktop/src/components/onboarding/__tests__/plan-chat.test.tsx`
 
-### Step 1: Write failing test
+### Step 1: Write failing tests
 
-In `apps/desktop/src/components/onboarding/__tests__/plan-chat.test.tsx`, assert `createSession` is called with the `worktreePath` that the confirm route stamped. (If the existing test mocks `confirmTransition` to return a `worktreePath` on the updated session, assert `actions.createSession` receives it as the 4th arg. Follow the existing mock pattern in that file for `changeName` and mirror it for `worktreePath`.)
+In `apps/desktop/src/stores/server/__tests__/actions.test.ts`, add or extend a `createSession` test to assert the POST body includes `worktreePath` when provided:
 
 ```ts
-it("carries worktreePath from the confirmed plan session to the new mission", async () => {
-  // ... existing setup that renders PlanChat with a pending transition ...
-  // Mock confirmTransition so the plan session's meta gets worktreePath set:
-  server.actions.updateSession(sid, { worktreePath: "/wt/path", changeName: "add" });
-  // ... approve the gate ...
-  await /* flush */;
-  expect(actions.createSession).toHaveBeenCalledWith(
-    expect.any(String),
-    expect.anything(),
-    "add",
-    "/wt/path",
+it("createSession posts worktreePath when provided", async () => {
+  const deps = makeDeps();
+  const mockApi = {
+    api: {
+      sessions: {
+        $post: vi.fn(() =>
+          okRes({
+            id: "mission-1",
+            projectId: "p1",
+            title: "Mission",
+            modelId: null,
+            profileId: null,
+            thinkingLevel: "off",
+            kind: "mission",
+            pendingTransitionBody: null,
+            parentSessionId: null,
+            changeName: "add-feature",
+            worktreePath: "/tmp/sakti/projects/app--add-feature",
+            pendingTransitionTo: null,
+            status: "specify",
+            createdAt: 1,
+            updatedAt: 1,
+          }),
+        ),
+      },
+    },
+  };
+  const actions = createActions(mockApi as never, makeMockWs(), deps);
+
+  await actions.createSession(
+    "p1",
+    "Mission",
+    "add-feature",
+    "/tmp/sakti/projects/app--add-feature",
   );
+
+  expect(mockApi.api.sessions.$post).toHaveBeenCalledWith({
+    json: {
+      projectId: "p1",
+      title: "Mission",
+      changeName: "add-feature",
+      worktreePath: "/tmp/sakti/projects/app--add-feature",
+    },
+  });
 });
 ```
 
-(Adapt to the file's actual harness — the key assertion is the 4th positional arg `worktreePath`.)
+In `apps/desktop/src/components/onboarding/__tests__/plan-chat.test.tsx`, update the testing-library import:
+
+```ts
+import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
+```
+
+Update the hoisted mocks so tests can render a pending transition:
+
+```ts
+pendingTransition: null as null | { to: string; body: string },
+sessionMeta: {} as Record<
+  string,
+  { profileId: string | null; changeName: string | null; worktreePath: string | null }
+>,
+```
+
+Update the `useStore` mock to read those values:
+
+```ts
+sessions: {
+  get: () => ({
+    store: {
+      streaming: { phase: "idle" },
+      turns: [],
+      pendingTransition: mocks.pendingTransition,
+    },
+    actions: { clearPendingTransition: mocks.clearPendingTransition },
+  }),
+},
+server: {
+  store: {
+    sessions: mocks.sessionMeta,
+  },
+},
+```
+
+Reset them in `beforeEach`:
+
+```ts
+mocks.pendingTransition = null;
+mocks.sessionMeta = {};
+```
+
+Add the failing test:
+
+```ts
+it("carries worktreePath from the confirmed plan session to the new mission", async () => {
+  mocks.pendingTransition = { to: "mission", body: "Build the thing\n\nDetails" };
+  mocks.sessionMeta.s1 = {
+    profileId: null,
+    changeName: "add-feature",
+    worktreePath: "/tmp/sakti/projects/app--add-feature",
+  };
+
+  render(() => <PlanChat projectId="p1" sessionId="s1" />);
+
+  const create = await screen.findByRole("button", { name: "Create" });
+  fireEvent.click(create);
+
+  await waitFor(() => {
+    expect(mocks.confirmTransition).toHaveBeenCalledWith(
+      "s1",
+      "mission",
+      "Build the thing\n\nDetails",
+      "approve",
+    );
+    expect(mocks.createSession).toHaveBeenCalledWith(
+      "p1",
+      "Build the thing",
+      "add-feature",
+      "/tmp/sakti/projects/app--add-feature",
+    );
+  });
+});
+```
 
 ### Step 2: Run test to verify it fails
 
 ```bash
-vp run desktop#test -- src/components/onboarding/__tests__/plan-chat.test.tsx
+vp run 'desktop#test' -- src/components/onboarding/__tests__/plan-chat.test.tsx
 ```
 
-Expected: FAIL (createSession called without the 4th arg).
+Expected: FAIL (`createSession` does not accept/post the 4th arg, and `PlanChat` calls it without the 4th arg).
 
 ### Step 3: Implement
+
+In `apps/desktop/src/stores/server/actions.ts`, update the `Actions` interface:
+
+```ts
+createSession: (projectId: string, title?: string, changeName?: string, worktreePath?: string) =>
+  Promise<SessionMeta | undefined>;
+```
+
+Update the implementation:
+
+```ts
+async createSession(projectId, title, changeName, worktreePath) {
+  try {
+    const res = await api.api.sessions.$post({
+      json: {
+        projectId,
+        ...(title === undefined ? {} : { title }),
+        ...(changeName === undefined ? {} : { changeName }),
+        ...(worktreePath === undefined ? {} : { worktreePath }),
+      },
+    });
+    if (!res.ok) {
+      return;
+    }
+    const session = (await res.json()) as SessionMeta;
+    server.actions.addSession(session);
+    return session;
+  } catch (error) {
+    setLastError(error instanceof Error ? error.message : "Failed to create session");
+  }
+}
+```
 
 In `apps/desktop/src/components/onboarding/plan-chat.tsx`, `handleConfirmSession`, read `worktreePath` alongside `changeName` and pass it:
 
 ```ts
 const changeName = server.store.sessions[sid]?.changeName ?? undefined;
 const worktreePath = server.store.sessions[sid]?.worktreePath ?? undefined;
-// ...
 const missionSession = await actions.createSession(
   props.projectId,
   title,
@@ -898,7 +1433,7 @@ const missionSession = await actions.createSession(
 ### Step 4: Run test to verify it passes
 
 ```bash
-vp run desktop#test -- src/components/onboarding/__tests__/plan-chat.test.tsx
+vp run 'desktop#test' -- src/stores/server/__tests__/actions.test.ts src/components/onboarding/__tests__/plan-chat.test.tsx
 ```
 
 Expected: PASS.
@@ -906,13 +1441,13 @@ Expected: PASS.
 ### Step 5: Commit
 
 ```bash
-git add apps/desktop/src/components/onboarding/plan-chat.tsx apps/desktop/src/components/onboarding/__tests__/plan-chat.test.tsx
+git add apps/desktop/src/stores/server/actions.ts apps/desktop/src/stores/server/__tests__/actions.test.ts apps/desktop/src/components/onboarding/plan-chat.tsx apps/desktop/src/components/onboarding/__tests__/plan-chat.test.tsx
 git commit -m "fix(desktop): carry worktreePath from plan→mission confirm to the new mission session"
 ```
 
 ---
 
-## Task 9: Final verification
+## Task 10: Final verification
 
 ### Step 1: Full test suite
 
@@ -944,13 +1479,13 @@ rg "createMissionWorktree|removeMissionWorktree" apps/server/src --glob '*.ts'
 ### Step 4: Manual smoke check (optional)
 
 ```bash
-vp run desktop#dev
+vp run 'desktop#dev'
 ```
 
 - Plan a change that creates `.sakti/changes/<name>/`.
 - Approve plan→mission. Verify:
   - Worktree created under `~/.sakti/projects/<projectBasename>--<name>/`.
-  - `node_modules` in the worktree is a symlink to the main repo's.
+  - Existing dependency dirs from the curated/default settings list are symlinks to the main repo's, e.g. `node_modules`, `.venv`, or `target`.
   - Main repo's `.sakti/changes/<name>/` is gone (`git status` clean on main).
   - The mission's first `read` of `.sakti/changes/<name>/proposal.md` succeeds (absorbed).
   - Running the project's test command in the mission works (deps symlinked).

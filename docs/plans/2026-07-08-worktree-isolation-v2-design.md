@@ -9,7 +9,7 @@
 v1 worktree isolation (just shipped) has three gaps discovered in review and use:
 
 1. **Cluttered user space.** Worktrees live in a sibling dir `<projectDir>-worktrees/<change>` inside (or next to) the user's project tree. Users see sakti-managed dirs beside their code.
-2. **Broken scripts.** A worktree is a fresh checkout from the base branch — it has the source but **none of `node_modules`** (gitignored). So `pnpm test` / `npm test` fail in the mission until deps exist. Missions can't actually run the project's tests.
+2. **Broken scripts.** A worktree is a fresh checkout from the base branch — it has the source but none of the usual gitignored dependency/cache directories (`node_modules`, `.venv`, `target`, etc.). So tests fail in the mission until deps exist. Missions can't actually run the project's scripts reliably across languages.
 3. **Change content is invisible to the mission.** The plan session creates `.sakti/changes/<change>/proposal.md` (and design/tasks/specs) **uncommitted in the main repo's working tree**. A fresh base-branch checkout does not contain them. So when the specify agent runs in the worktree and is told _"Read proposal.md for this change"_, there is nothing there.
 
 ## Goal
@@ -23,11 +23,11 @@ v1 worktree isolation (just shipped) has three gaps discovered in review and use
 | Decision               | Choice                                                                                                     | Rationale                                                                                                     |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Worktree location      | **`~/.sakti/projects/<projectBasename>--<changeName>`** (+ `--<projectId[:8]>` suffix on collision)        | Out of the user's project tree; further from the main repo than v1's sibling dir (less likely to be scanned)  |
-| Dependencies           | **Symlink `node_modules` from the main repo into the worktree**                                            | Instant, zero disk, auto-stays-in-sync; correct for short-lived same-machine worktrees. v1 scope is JS only   |
+| Dependencies           | **Symlink curated dependency/cache dirs from the main repo into the worktree**                             | Instant, zero disk, auto-stays-in-sync; supports JS, Python, Rust, Ruby, JVM, Go, Zig-style local deps/caches |
 | Change content         | **Commit `.sakti/changes/<change>/` onto the `sakti/<change>` branch as its first commit**                 | Git-native; branch becomes the single source of truth for the change; main never carries mission dirt         |
 | Main repo after absorb | **Remove the change dir from main** (untracked → `rm`)                                                     | Main stays clean; content lives on the branch and returns to main only via merge                              |
 | Clean-graduation guard | **Transition tool refuses `to:"mission"` if the working tree is dirty outside `.sakti/changes/<change>/`** | Stops graduation from absorbing unrelated WIP; surfaces at the moment the agent can act                       |
-| Dep scope (v1)         | **`node_modules` only**                                                                                    | Covers the JS/TS majority (this project included). `worktree.symlinkDirs` + ecosystem detect deferred (YAGNI) |
+| Dep override           | **Global `settings.json` key: `worktree.dependencySymlinkDirs`**                                           | User can replace the curated default list globally; workspace-specific settings are explicitly out of scope   |
 
 ## Architecture
 
@@ -53,16 +53,35 @@ Runs server-side in the confirm route on approve. **All-or-nothing**: a failure 
 3. **Create the worktree** from the default branch at the new location: `git worktree add -b sakti/<change> <path> <base>` (reuse a surviving branch — existing v1 logic).
 4. **Absorb the change content**: copy `project.cwd/.sakti/changes/<change>/` → `<worktree>/.sakti/changes/<change>/`, then in the worktree `git add .sakti/changes/<change>/ && git commit -m "sakti: begin change <change>"`. This is the branch's first commit; the mission's specify/build/archive commits stack on top.
 5. **Clean main**: remove `project.cwd/.sakti/changes/<change>/` (untracked-only per the invariant) so the main working tree returns to clean.
-6. **Symlink deps**: `ln -s <project.cwd>/node_modules <worktree>/node_modules` (skip if main has no `node_modules`).
+6. **Symlink deps**: resolve dependency-dir names from global settings or curated defaults, then symlink each existing `<project.cwd>/<dir>` into `<worktree>/<dir>` (skip missing dirs and existing worktree paths).
 7. **Stamp** `worktreePath` + `changeName` on the plan session → carried to the new mission session (existing v1 carry-through).
 
 **Net result:** main is clean; the mission branch owns the change content as a commit; the worktree has deps; the specify agent reads the committed `proposal.md` and writes `design.md`/`tasks.md` as further commits on the branch — none of it touching main.
 
 ### Dependency symlinks
 
-- v1 symlinks `node_modules` only (step 6 above). Instant, zero disk, and stays in sync with the main repo automatically.
-- The symlink lives **inside** the worktree dir, so teardown (`git worktree remove --force`) deletes it for free — no separate cleanup, and the main repo's `node_modules` is never touched.
-- Deferred (not v1): a project setting `worktree.symlinkDirs` for `target/`/`.venv`/etc., and an install-based escape hatch (`pnpm install` / `npm ci`) for native-module ABI edge cases. Added when a real non-JS or native-sensitive mission needs them.
+- By default, v2 symlinks this curated list when entries exist in the main repo:
+  - JS/TS: `node_modules`
+  - Python: `.venv`, `venv`
+  - Rust: `target`, `.cargo`
+  - Ruby: `vendor/bundle`, `.bundle`
+  - JVM/Gradle/Maven local caches: `.gradle`, `.m2`
+  - Go vendoring: `vendor`
+  - Zig: `zig-cache`, `.zig-cache`
+- Global override: `~/.sakti/agent/settings.json` may contain:
+
+```json
+{
+  "worktree": {
+    "dependencySymlinkDirs": ["node_modules", ".venv", "target"]
+  }
+}
+```
+
+If `dependencySymlinkDirs` is a non-empty string array, it **replaces** the curated default list. If absent, empty, or malformed, Sakti uses the curated defaults and logs a warning for malformed values.
+
+- Each symlink lives **inside** the worktree dir, so teardown (`git worktree remove --force`) deletes links for free — no separate cleanup, and the main repo's dependency dirs are never touched.
+- Deferred (not v2): workspace-specific dependency settings and install-based dep provisioning (`pnpm install`, `cargo fetch`, `uv sync`, etc.). Added only after real use shows symlinks are insufficient.
 
 ### Transition-tool guardrail (the "clean first" rule)
 
@@ -75,7 +94,7 @@ The change dir itself is allowed (it is exactly what graduation absorbs). The er
 
 ### Teardown (archive→done) — unchanged shape
 
-- Remove the worktree dir (`git worktree remove --force`); this deletes the `node_modules` symlink with it. The main repo's deps are untouched.
+- Remove the worktree dir (`git worktree remove --force`); this deletes dependency symlinks with it. The main repo's deps are untouched.
 - Keep branch `sakti/<change>` — it carries all the mission's commits, including the absorbed change content.
 - Clear `worktreePath` on the session (already in v1).
 - **Merge path:** the user merges `sakti/<change>` into main; the change content lands on main as committed files. No manual cleanup anywhere.
@@ -86,18 +105,19 @@ The change dir itself is allowed (it is exactly what graduation absorbs). The er
 - **Absorb or clean fails mid-sequence** → best-effort: remove the half-created worktree, leave main exactly as it was, return 500. The change-dir copy (step 4) is non-destructive to main; only step 5's `rm` mutates main, and it runs last.
 - **Branch already survives** (re-graduation of an archived change) → reuse the branch (existing v1 logic); skip the absorb-commit when the change content is already present on the branch.
 - **Change dir is tracked on main** (rare — user committed it) → the guardrail still permits it (path is under `.sakti/changes/<change>/`); step 5 uses `git rm` instead of a plain `rm`.
-- **No `node_modules` in main** → skip the symlink (step 6 is a no-op). Mission may still install deps itself if needed.
+- **No configured dependency dirs in main** → dependency symlink step is a no-op. Mission may still install deps itself if needed.
 
 ## Migration from v1 (what changes in code)
 
-- `apps/server/src/lib/worktree.ts`: `worktreePathFor` → new location + collision suffix; new `absorbChangeContent` + `cleanMainChangeDir` helpers; deps symlink helper.
-- `apps/server/src/routes/sessions/confirm.ts`: graduation sequence gains absorb → clean → symlink steps between worktree creation and the stamp.
+- `apps/server/src/lib/worktree.ts`: `worktreePathFor` → new location + collision suffix; new `absorbChangeContent` + `cleanMainChangeDir` helpers; dependency symlink helper.
+- `apps/server/src/lib/worktree-settings.ts` (new): resolve curated dependency symlink dirs from `settings.json`, with global override validation.
+- `apps/server/src/routes/sessions/confirm.ts`: graduation sequence gains absorb → dependency symlink → clean steps between worktree creation and the stamp.
 - `apps/server/src/agent/config/tool-registry.ts` (`preflightWorktree` / wrapper): add the clean-working-tree check.
-- `apps/server/src/lib/__tests__/worktree.test.ts` + `confirm.test.ts`: location, absorb, clean, symlink, guardrail coverage.
+- `apps/server/src/lib/__tests__/worktree.test.ts` + `confirm.test.ts`: location, absorb, clean, dependency symlink, settings override, guardrail coverage.
 - **Unchanged:** status rename, `transition-table.ts` edges/flags, `applyTransition` teardown wiring, `resolveSessionCwd`, the desktop carry-through, the `done`-session guards.
 
 ## Out of scope (v1)
 
-- Non-`node_modules` dep dirs (`target/`, `.venv`), install-based dep provisioning, ecosystem auto-detect.
+- Workspace-specific dependency settings, install-based dep provisioning, ecosystem auto-detect.
 - Automatic merge of `sakti/<change>` into main at archive (user merges manually; the branch is retained).
 - Windows symlink permissions (this is a Linux desktop app).
