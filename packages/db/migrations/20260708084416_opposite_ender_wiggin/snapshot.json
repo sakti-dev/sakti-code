@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "3b190c36-7bb8-44e2-be84-02e075af92c1",
+  "id": "719a48e6-e348-4780-80d6-03f4c8ac745b",
   "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
@@ -562,7 +562,7 @@
       "type": "text",
       "notNull": true,
       "autoincrement": false,
-      "default": "'planning'",
+      "default": "'specify'",
       "generated": null,
       "name": "status",
       "entityType": "columns",
@@ -574,7 +574,7 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "pending_ask_kind",
+      "name": "change_name",
       "entityType": "columns",
       "table": "sessions"
     },
@@ -584,7 +584,27 @@
       "autoincrement": false,
       "default": null,
       "generated": null,
-      "name": "pending_ask_body",
+      "name": "worktree_path",
+      "entityType": "columns",
+      "table": "sessions"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "pending_transition_to",
+      "entityType": "columns",
+      "table": "sessions"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "pending_transition_body",
       "entityType": "columns",
       "table": "sessions"
     },

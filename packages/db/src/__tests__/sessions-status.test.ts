@@ -24,29 +24,32 @@ describe("sessions status column", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("defaults a new task session to 'specifying'", async () => {
+  it("defaults a new task session to 'specify'", async () => {
     const project = await projectRepo.create("status-test", "/tmp/status-test");
     const session = await sessionRepo.create(project.id);
-    expect(session.status).toBe("specifying");
+    expect(session.status).toBe("specify");
   });
 
-  it("can be updated to building/review/merged", async () => {
+  it("can be updated to build/verify/archive/done", async () => {
     const project = await projectRepo.create("status-test-2", "/tmp/status-test-2");
     const session = await sessionRepo.create(project.id);
 
-    const building = await sessionRepo.update(session.id, { status: "building" });
-    expect(building.status).toBe("building");
+    const build = await sessionRepo.update(session.id, { status: "build" });
+    expect(build.status).toBe("build");
 
-    const review = await sessionRepo.update(session.id, { status: "review" });
-    expect(review.status).toBe("review");
+    const verify = await sessionRepo.update(session.id, { status: "verify" });
+    expect(verify.status).toBe("verify");
 
-    const merged = await sessionRepo.update(session.id, { status: "merged" });
-    expect(merged.status).toBe("merged");
+    const archive = await sessionRepo.update(session.id, { status: "archive" });
+    expect(archive.status).toBe("archive");
+
+    const done = await sessionRepo.update(session.id, { status: "done" });
+    expect(done.status).toBe("done");
   });
 
   it("can be created with an explicit status", async () => {
     const project = await projectRepo.create("status-test-3", "/tmp/status-test-3");
-    const session = await sessionRepo.create(project.id, { status: "building" });
-    expect(session.status).toBe("building");
+    const session = await sessionRepo.create(project.id, { status: "build" });
+    expect(session.status).toBe("build");
   });
 });

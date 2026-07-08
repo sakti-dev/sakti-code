@@ -20,13 +20,18 @@ export const sessions = sqliteTable("sessions", {
   modelId: text("model_id"),
   profileId: text("profile_id"),
   kind: text("kind").notNull().default("mission"),
-  // SDD task lifecycle: specifying → building → review → merged.
+  // SDD phase lifecycle: specify → build → verify → archive → done.
   // Plan sessions are unaffected; only mission sessions use this column.
-  status: text("status").notNull().default("specifying"),
+  // Status values align 1:1 with phase names. `done` is terminal.
+  status: text("status").notNull().default("specify"),
   // Links a mission session to its SDD change (set when the mission is created
   // from a plan graduation). Null for plan sessions / pre-linkage missions.
   // Used by the runtime to resolve the change dir for progress-aware reminders.
   changeName: text("change_name"),
+  // Absolute path to the mission's isolated git worktree. Null = run on
+  // project.cwd (plan sessions, pre-isolation missions). Set at plan→mission
+  // graduation; cleared at archive→done teardown.
+  worktreePath: text("worktree_path"),
   // Pending transition tool-call awaiting resolution. Set server-side when an
   // agent's `transition` tool-call starts; the runner resolves gate/auto and
   // either chains (auto) or leaves it pending for the confirm route (gate).
