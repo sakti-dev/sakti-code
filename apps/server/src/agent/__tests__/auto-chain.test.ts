@@ -177,7 +177,7 @@ describe("runAgentStream auto-chain across auto-edges", () => {
   it("does NOT inject reminders for interactive (specify) phases", async () => {
     const { ctx, db } = await makeContext();
     const project = await ctx.repos.projects.create("interactive", "/tmp/interactive");
-    const session = await ctx.repos.sessions.create(project.id, { status: "specifying" });
+    const session = await ctx.repos.sessions.create(project.id, { status: "specify" });
     const storage = new SqliteSessionStorage(db, session.id, {
       id: session.id,
       createdAt: new Date().toISOString(),
