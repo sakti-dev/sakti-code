@@ -340,7 +340,7 @@ export async function runAgentStream(
       const phase = autonomousPhaseForSession(session);
       if (phase && stalls < MAX_REMINDERS) {
         stalls++;
-        currentMessage = await buildProgressAwareReminder(ctx, session, phase);
+        currentMessage = await buildProgressAwareReminder(ctx, session, phase, stalls);
         continue;
       }
       return; // interactive phase, or stall cap reached — surface to the user
@@ -414,21 +414,22 @@ async function buildProgressAwareReminder(
   ctx: ServerContext,
   session: { changeName: string | null; projectId: string },
   phase: "build" | "verify",
+  stallCount: number,
 ): Promise<string> {
   if (phase !== "build" || !session.changeName) {
-    return buildReminder(phase);
+    return buildReminder(phase, undefined, stallCount);
   }
   try {
     const project = ctx.repos.projects.findById(session.projectId);
-    if (!project) return buildReminder(phase);
+    if (!project) return buildReminder(phase, undefined, stallCount);
     const progress = await getTaskProgressForChange(
       path.join(project.cwd, SAKTI_CHANGES_DIR),
       session.changeName,
       project.cwd,
     );
-    return buildReminder(phase, progress);
+    return buildReminder(phase, progress, stallCount);
   } catch {
-    return buildReminder(phase);
+    return buildReminder(phase, undefined, stallCount);
   }
 }
 

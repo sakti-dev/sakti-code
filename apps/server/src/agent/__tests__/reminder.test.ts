@@ -38,4 +38,15 @@ describe("buildReminder", () => {
     expect(r).toContain('transition({to:"archive"})');
     expect(r).toContain("completeness");
   });
+
+  it("escalation tone at the stall cap (stallCount >= 2)", () => {
+    const reminder = buildReminder("build", undefined, 2);
+    expect(reminder).toContain("stalled");
+    expect(reminder).toContain("blocker");
+  });
+
+  it("non-escalated reminder does not contain escalation language", () => {
+    const reminder = buildReminder("build", undefined, 0);
+    expect(reminder).not.toContain("stalled");
+  });
 });
