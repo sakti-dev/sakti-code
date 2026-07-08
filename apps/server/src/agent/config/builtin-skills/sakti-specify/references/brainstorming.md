@@ -1,11 +1,11 @@
-# Brainstorming Guide (Technical Design)
+# Brainstorming Guide (Specify Phase — full workflow)
 
-Turn phase-1 artifacts into a deep technical design through collaborative dialogue.
+Turn the plan-phase proposal into a detailed specification through collaborative dialogue. Produces `design.md` + `tasks.md` (and spec deltas when the change modifies behavior).
 
-**IMPORTANT: This phase is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them that design is about thinking first. You MAY capture insights as notes for the design proposal — that's capturing thinking, not implementing.
+**IMPORTANT: This phase is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them that the specify phase is about thinking first. You MAY capture insights as notes for the design — that's capturing thinking, not implementing.
 
 <HARD-GATE>
-Do NOT create technical-design.md, enrich tasks.md, write spec patches, set state fields, or take any implementation action until you have presented a design proposal and the user has approved it. This applies to EVERY change regardless of perceived simplicity.
+Do NOT create design.md, tasks.md, write spec deltas, or take any implementation action until you have presented a design proposal and the user has approved it. This applies to EVERY change regardless of perceived simplicity.
 </HARD-GATE>
 
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
@@ -16,18 +16,15 @@ Every change goes through this process. A single function, a config change, a on
 
 ## The Process
 
-### 1. Orient on Phase-1 Artifacts
+### 1. Orient on the Proposal
 
-You are NOT starting from scratch. Phase 1 already produced:
+You are NOT starting from scratch. The plan phase produced:
 
-- **proposal.md** — goals, scope, non-goals
-- **specs/\*/\*.md** — requirements and acceptance scenarios
-- **design.md** — high-level architecture decisions
-- **tasks.md** — basic task checklist
+- **proposal.md** — the problem, what changes, scope, impact (the "why" and rough "what")
 
-Read all of them before asking any questions. Your job is to go **deeper**: implementation approach, technical risks, testing strategy, task sequencing, spec gaps.
+Read it before asking any questions. Your job is to go **deeper**: implementation approach, technical risks, testing strategy, task breakdown, and — if the change modifies behavior — the spec deltas (requirements + acceptance scenarios per capability).
 
-If the phase-1 artifacts are unclear or incomplete, flag it — that's a signal to return to phase 1, not to fill gaps during design.
+If the proposal is unclear or missing scope, flag it — that's a signal to return to the plan phase, not to fill gaps during specify.
 
 ### 2. Ask Clarifying Questions
 
@@ -72,8 +69,8 @@ Once an approach is chosen, present the full design proposal:
 - **Alternatives considered:** what was rejected and why
 - **Risks & mitigations:** table of risks, impact, and mitigation strategies
 - **Testing strategy:** unit/integration/e2e approach, key test scenarios
-- **Task enrichment plan:** how tasks.md will be enriched (sequencing, per-task details)
-- **Spec patches:** missing acceptance scenarios to write back (or "None")
+- **Task breakdown plan:** how tasks.md will be structured (sequencing, per-task details)
+- **Spec deltas:** requirements + acceptance scenarios to write (or "None — no behavior change")
 
 Scale each section to its complexity — a few sentences for straightforward areas, more detail for nuanced ones.
 
@@ -105,7 +102,7 @@ Present this proposal in the conversation. Do NOT write any files yet. The user 
 - **Incremental validation** — Present design, get approval before creating artifacts
 - **Be flexible** — Go back and clarify when something doesn't make sense
 - **Ground in reality** — Read the actual codebase, don't theorize
-- **Don't rewrite phase-1 artifacts** — Your job is to go deeper, not to redo planning
+- **Don't rewrite the proposal** — Your job is to go deeper (design, tasks, spec deltas), not to redo planning
 
 ---
 
@@ -115,9 +112,9 @@ These thoughts mean STOP — you're rationalizing:
 
 | Thought                                                | Reality                                                                            |
 | ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| "The phase-1 design.md already covers this"            | Phase-1 design is high-level. Go deeper: implementation, risks, testing            |
+| "The proposal already covers this"                     | The proposal is the rough plan. Go deeper: implementation, risks, testing          |
 | "This is simple enough to skip the proposal"           | Every change gets a proposal. Simple changes need it most — assumptions hide there |
-| "I can just write the technical-design.md directly"    | HARD-GATE: no artifacts before user confirms the proposal                          |
+| "I can just write the design.md directly"              | HARD-GATE: no artifacts before user confirms the proposal                          |
 | "The user would probably agree with this approach"     | Cannot decide for the user — present and wait                                      |
-| "I'll just quickly check the code while brainstorming" | Reading is fine. Writing code is not. Design is thinking time                      |
-| "The specs have a gap, let me fix it now"              | Flag it as a Spec Patch candidate. Don't write it until after confirmation         |
+| "I'll just quickly check the code while brainstorming" | Reading is fine. Writing code is not. Specify is thinking time                     |
+| "The specs have a gap, let me fix it now"              | Flag it as a spec delta candidate. Don't write it until after confirmation         |

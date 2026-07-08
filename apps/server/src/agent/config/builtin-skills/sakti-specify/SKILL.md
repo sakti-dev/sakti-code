@@ -1,127 +1,94 @@
 ---
 name: sakti-specify
-description: "Specify phase. Use when a change has completed planning and needs detailed specification before implementation. Runs brainstorming (full workflow) or autonomous solutioning (hotfix), produces design.md + tasks.md, writes spec deltas when needed."
+description: "Specify phase. Use when a change has completed planning and needs detailed specification before implementation. Branches on workflow: full → brainstorming (interactive), hotfix → autonomous. Produces design.md + tasks.md, writes spec deltas only when behavior changes."
 ---
 
 # Sakti Specify
 
 ## Overview
 
-Phase-2 deep design skill. Takes the phase-1 artifacts (proposal, specs, design, tasks) and runs a full brainstorming session to produce a deep technical design. Enriches tasks.md with implementation details and writes spec patches if acceptance scenario gaps are discovered.
+Specify-phase skill. Takes the plan-phase proposal and produces the detailed specification: `design.md` + `tasks.md` (always), and spec deltas (only when the change modifies behavior). Branches on the change's `workflow`:
 
-**Core principle:** brainstorming cannot be skipped. The user must explicitly confirm the design proposal before artifacts are created.
+- **`full`** → brainstorming mode (interactive): read `references/brainstorming.md`
+- **`hotfix`** → autonomous mode (no brainstorming): read `references/autonomous.md`
+
+**Core principle:** `tasks.md` is always produced — the build phase (and future per-task subagents) depend on it. Spec files are written only when there's a real behavior delta.
 
 ## When to Use
 
-- A change has completed phase 1 (planning) and `phase` is `design`
-- The user explicitly asks for deep technical design on a change
-- The user wants to explore implementation approaches, risks, and testing strategy before building
+- A change has completed planning (`phase: specify`, set by `open-complete`) and needs detailed specification.
 
 **Do NOT use when:**
 
-- Phase is `open` — complete phase 1 (planning) first
-- Phase is `build` or later — the design phase is already complete
-- The change uses `hotfix` or `tweak` workflow (these skip the design phase)
+- Phase is `open` — complete planning first (sakti-plan)
+- Phase is `build` or later — specification is already complete
 
 ## Prerequisites
 
-- Active change with `phase: design` (set by `open-complete` transition for `workflow: full`)
-- Phase-1 artifacts exist: proposal.md, specs/\*/spec.md, design.md, tasks.md
+- Active change with `phase: specify`
+- `proposal.md` exists (produced by the plan phase)
 - The `sakti` CLI installed and available on PATH
 
 ## Output Language
 
-Use the language of the user request that triggered this skill as the default output language. When resuming an existing change with a clear dominant artifact language, preserve that unless the user explicitly asks to switch.
+Use the language of the user request that triggered this skill as the default output language. When resuming an existing change with a clear dominant artifact language, preserve it unless the user explicitly asks to switch.
 
 ## The Flow
 
-### Step 1 — Entry Check
+### Step 1 — Entry: Read Workflow + Branch
 
-**1a. Verify phase.** Confirm the change is in the design phase:
+**1a. Read the workflow.**
 
 ```bash
-sakti state get <name> phase
+sakti state get <name> workflow
 ```
 
-If the phase is not `design`, stop and tell the user what phase they're in and what skill to use instead.
+**1b. Branch on workflow:**
 
-**1b. Read phase-1 artifacts.** Load all artifacts from the change directory as context for brainstorming:
+- `full` → **brainstorming mode**: read `references/brainstorming.md` and follow it.
+- `hotfix` → **autonomous mode**: read `references/autonomous.md` and follow it.
 
-- `proposal.md` — goals, scope, non-goals
-- `specs/*/spec.md` — requirements and acceptance scenarios
-- `design.md` — high-level architecture decisions (from phase 1)
-- `tasks.md` — basic task checklist
+**1c. Read the proposal.** Load `proposal.md` as the input for either mode.
 
-These are the input. Do not modify them during brainstorming — only after user confirmation (Step 5).
+### Step 2 — Run the Mode
 
-### Step 2 — Brainstorm
+**Brainstorming mode (full):** Interactive — ask clarifying questions one at a time, explore the codebase, propose 2-3 approaches, present a design proposal, and wait for user confirmation (blocking). Then produce:
 
-**Read `references/brainstorming.md`** (relative to this skill's directory) and follow its guidance to run a deep technical design brainstorming session.
+- spec deltas (requirements + acceptance scenarios per capability) — because `full` changes modify behavior
+- `design.md` (the technical design — single doc)
+- `tasks.md` (checkbox tasks)
 
-The brainstorming guide covers: orienting on phase-1 artifacts, asking clarifying questions one at a time, exploring the codebase, proposing 2-3 approaches, and producing a design proposal. Do not treat one Q&A turn as sufficient — keep asking until you can produce a complete proposal with all six parts:
+**Autonomous mode (hotfix):** No brainstorming. Drive the complete solution independently, grounded in the actual code. Produce `design.md` + `tasks.md`. Write **no** spec file unless escalation triggers (below).
 
-- **Technical approach:** chosen architecture, data flow, key decisions and rationale
-- **Alternatives considered:** 2-3 alternatives with trade-offs, why rejected
-- **Risks and mitigations:** table of risks, impact, and mitigation strategies
-- **Testing strategy:** unit/integration/e2e approach, key test scenarios
-- **Task enrichment plan:** how tasks.md will be enriched (sequencing, per-task details)
-- **Spec patches:** list of acceptance scenario gaps to write back (or "None")
+### Step 3 — Escalation (hotfix → full, only if triggered)
 
-**Do NOT create any artifacts, write code, or modify files during brainstorming.** The brainstorming guide has a HARD-GATE: no artifacts until the user confirms the proposal (Step 3).
+If autonomous mode discovers the change actually needs a behavior change or new spec:
 
-### Step 3 — Confirm Design Proposal (Blocking Point)
+1. Flip the workflow: `sakti state set <name> workflow full`
+2. Switch to brainstorming mode — read `references/brainstorming.md` and follow it
+3. Ask the user how they want to design the spec change
+4. Produce spec deltas + design.md + tasks.md via the brainstorming flow
 
-Present the design proposal summary:
+This keeps records honest: a misclassified hotfix self-corrects rather than producing a shallow result.
 
-- Technical approach adopted
-- Key trade-offs and risks
-- Testing strategy
-- Spec patches to be written back (if any)
-- How tasks will be enriched
+### Step 4 — Artifacts
 
-Offer a single-select choice:
-
-- **"Confirm, proceed to create artifacts"** — design proposal is accepted
-- **"Needs adjustment"** — continue brainstorming iteration until confirmed
-
-**Pause and wait for the user's explicit choice.** Do not create artifacts, set state fields, or transition before confirmation.
-
-### Step 4 — Create technical-design.md
-
-After the user confirms, create the technical design doc inside the change directory:
-
-**File:** `.sakti/changes/<name>/technical-design.md`
-
-Template:
+**Single design.md** (drop the old technical-design.md — there is one design doc per change):
 
 ```markdown
----
-change: <change-name>
-role: technical-design
----
-
-# Technical Design: <topic>
+# Design: <topic>
 
 ## Context
 
-Brief reference to proposal goals and high-level design decisions from phase 1.
+Brief reference to proposal goals.
 
 ## Technical Approach
 
-Chosen approach — architecture, data flow, key technology choices and rationale.
-
-### Architecture
-
-[diagram or description of the technical architecture]
-
-### Data Flow
-
-[how data moves through the system]
+Architecture, data flow, key decisions and rationale.
 
 ### Key Decisions
 
 - Decision 1: rationale
-- Decision 2: rationale
 
 ## Alternatives Considered
 
@@ -130,115 +97,64 @@ Chosen approach — architecture, data flow, key technology choices and rational
 ## Risks & Mitigations
 
 | Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| ...  | ...    | ...        |
 
 ## Testing Strategy
 
 Unit/integration/e2e approach, key test scenarios.
-
-## Spec Patches
-
-List of spec changes written back in Step 6, or "None".
 
 ## Open Questions
 
 Unresolved items, if any.
 ```
 
-### Step 5 — Enrich tasks.md
-
-Transform the basic task checklist from phase 1 into a detailed implementation plan. For each task, add:
-
-- **Goal:** what this task achieves
-- **Dependencies:** which tasks must be done first (or "none")
-- **Files:** key files to touch
-- **Approach:** brief implementation notes
-- **Risks:** what could go wrong
-- **Testing:** how to verify this task
-
-Enriched tasks.md format:
+**tasks.md** — checkbox format (the build phase parses `- [ ] N.Y`):
 
 ```markdown
-# Tasks
+## 1. <area>
 
-## Task 1: <description>
-
-**Goal:** what this task achieves
-**Dependencies:** which tasks first (or "none")
-**Files:** key files to touch
-**Approach:** brief implementation notes
-**Risks:** what could go wrong
-**Testing:** how to verify
-
-### Subtasks
-
-- [ ] Step 1
-- [ ] Step 2
-
----
-
-## Task 2: <description>
-
-...
+- [ ] 1.1 <task>
+- [ ] 1.2 <task>
 ```
 
-Preserve the original task descriptions and ordering. Add detail, don't remove or reorder tasks unless the design revealed a better sequence (note any reordering in the technical-design.md).
+**Specs** — written **only** when there's a real behavior delta. Full changes usually produce some; hotfix usually produces none (unless escalated). Follow the spec-driven schema's delta operations (ADDED/MODIFIED/REMOVED/RENAMED).
 
-### Step 6 — Write Spec Patches (if any)
+### Step 5 — End-of-Specify Confirm (Blocking Point)
 
-If brainstorming discovered missing acceptance scenarios or ambiguous requirements:
+Present a summary of design.md + tasks.md via the `ask` tool (omit `kind`):
 
-1. Edit the relevant `specs/<capability>/spec.md` files directly
-2. Add the missing acceptance scenarios or clarify ambiguous descriptions
-3. List all patches in the technical-design.md "Spec Patches" section
+- **"Confirm, specification complete"** — proceed to transition
+- **"Needs adjustment"** — revise, then re-request confirmation
 
-Spec patches are limited to:
+**Pause and wait for the user's explicit choice.** Do not transition before confirmation.
 
-- Supplementing acceptance scenarios
-- Correcting ambiguous descriptions
-- Adding boundary conditions
-
-Do NOT substantially rewrite the delta spec's structure or scope. If major changes are needed, flag them as design findings in the technical-design.md and recommend returning to phase 1.
-
-### Step 7 — Transition
-
-**7a. Record the design_doc path:**
+### Step 6 — Transition
 
 ```bash
-sakti state set <name> design_doc technical-design.md
+sakti state transition <name> specify-complete
 ```
 
-**7b. Run the design-complete transition:**
-
-```bash
-sakti state transition <name> design-complete
-```
-
-This verifies that `technical-design.md` exists on disk and advances the phase to `build`.
+This verifies `design.md` + `tasks.md` exist and advances the phase to `build`.
 
 ## Decision Points
 
-Step 3 is a **blocking point**. Follow these rules:
+Steps 5 (and the brainstorming-mode confirmation inside `references/brainstorming.md`) are **blocking points**:
 
-- Pause and wait for an explicit user choice before continuing
-- Use the current platform's question or confirmation tool
-- If no structured tool exists, ask clear options in the conversation and stop until the user replies
-- Never substitute recommendation rules, defaults, or "the user would probably agree" for current confirmation
-- Do not create artifacts, set state fields, or transition before the user explicitly chooses
+- **Call the `ask` tool.** For an open choice (design review, revisions), omit `kind`.
+- **Never end a blocking point with plain text.** Free text does not set a pending ask or render a card — the user typing "approved" as a message does nothing.
+- Pause and wait for an explicit user choice before continuing/transitioning.
 
 ## Exit & Handoff
 
-After the transition succeeds, print a short handoff block:
+After `specify-complete` succeeds:
 
 ```
-Design complete. Change: <name>
-Phase: design → build
+Specification complete. Change: <name>
+Phase: specify → build
 
 Artifacts produced:
-  - technical-design.md (deep technical design)
-  - tasks.md (enriched with implementation details)
-  - specs/ (spec patches, if any)
+  - design.md (technical design)
+  - tasks.md (implementation checklist)
+  - specs/ (deltas, if any behavior change)
 
 Next steps:
   Run `sakti status --change <name>` anytime to check state
@@ -248,11 +164,11 @@ The change is now ready for the build phase.
 
 ## Common Mistakes
 
-| Mistake                                        | Fix                                                                                           |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Skipping brainstorming                         | Step 2 requires reading `references/brainstorming.md` — no exceptions                         |
-| Creating artifacts before user confirmation    | Step 3 is a blocking point — wait for explicit confirmation                                   |
-| Rewriting proposal/specs during brainstorming  | Brainstorming produces proposals only; artifacts are modified after confirmation              |
-| Substantially rewriting delta specs in Step 6  | Spec patches supplement acceptance scenarios only; major changes require returning to phase 1 |
-| Not reading the codebase during brainstorming  | Ground the design in actual code — don't theorize                                             |
-| Forgetting to set design_doc before transition | Step 7a sets design_doc; the transition verifies the file exists                              |
+| Mistake                                                           | Fix                                                                                       |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Creating technical-design.md instead of design.md                 | There is ONE design doc: `design.md`. technical-design.md no longer exists                |
+| Skipping the end-of-specify confirm                               | Step 5 is a blocking point — wait for explicit confirmation via `ask`                     |
+| Writing spec deltas in hotfix/autonomous mode                     | Any behavior change triggers escalation to `full` + brainstorming, not silent spec writes |
+| Running brainstorming for a hotfix                                | hotfix uses autonomous mode (references/autonomous.md); brainstorming is for `full`       |
+| Forgetting tasks.md                                               | tasks.md is mandatory for every change (build + future subagents depend on it)            |
+| Ending a blocking point with plain text instead of the `ask` tool | Every blocking point uses `ask`; free-text "gates" silently do nothing                    |
