@@ -15,12 +15,12 @@
 > **After completing each package (all its capability specs), update this checklist by changing `[ ]` to `[x]` and noting the date/session.**
 
 - [x] `@sakti-code/logger` — 8 capability specs (2026-07-08)
-- [ ] `@sakti-code/sakti` — 11 capability specs
-- [ ] `@sakti-code/tools` — 10 capability specs
-- [ ] `@sakti-code/db` — 3 capability specs (update existing)
-- [ ] `@sakti-code/llm` — 2 capability specs
-- [ ] `@sakti-code/agent` — 7 capability specs (update existing + new)
-- [ ] `apps/server` — 4 capability specs
+- [x] `@sakti-code/sakti` — 9 capability specs (2026-07-08)
+- [x] `@sakti-code/tools` — 10 capability specs (2026-07-08)
+- [x] `@sakti-code/db` — 4 capability specs (3 updated + 1 new OM, 2026-07-08)
+- [x] `@sakti-code/llm` — 2 capability specs (2026-07-08)
+- [x] `@sakti-code/agent` — 7 capability specs (3 updated + 4 new, 2026-07-08)
+- [x] `apps/server` — 4 capability specs (1 rewritten + 3 new, 2026-07-08)
 - [ ] `apps/desktop` — 3 capability specs (update existing + new)
 
 ---

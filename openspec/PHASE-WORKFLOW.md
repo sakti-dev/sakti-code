@@ -1,6 +1,6 @@
 # Phase Workflow
 
-> Reference for how the SDD (spec-driven development) phase lifecycle is intended to work. This is the canonical description of the workflow; the builtin skills (`sakti-plan`, `sakti-specify`, `sakti-build`, `sakti-verify`, `sakti-archive`) and the transition system implement it.
+> Reference for how the SDD (spec-driven development) phase lifecycle works. This is the canonical description; the builtin skills (`sakti-plan`, `sakti-specify`, `sakti-build`, `sakti-verify`, `sakti-archive`) and the transition system implement it.
 
 ## Overview
 
@@ -39,11 +39,12 @@ Both workflows follow the same phase sequence. The `workflow` field only selects
 Agents move between phases by calling:
 
 ```
-transition({ to: "specify" | "build" | "verify" | "archive" | "mission", body: string })
+transition({ to: "specify" | "build" | "verify" | "archive" | "mission", body: string, preserveUnrelated?: "stash" })
 ```
 
 - The agent's **only job is deciding the destination** based on its judgment. It does **not** decide whether the transition is gated.
 - `body` carries the handoff payload (mission brief, fixing plan, completion/verify summary).
+- `preserveUnrelated` is an explicit opt-in for plan→mission only: when set to `"stash"`, the server stashes unrelated dirty paths before opening the mission gate (see [Worktree isolation](#worktree-isolation)).
 - The call ends the agent's turn (`terminate: true`). It is a pure signal — the server owns all policy and side-effects.
 
 ## The transition table (single source of truth for gating)
@@ -52,11 +53,11 @@ A server-side table declares each phase edge as **gate** (renders a yes/no card,
 
 | edge | mode | side-effect |
 |---|---|---|
-| plan → mission | gate | graduate the child plan transcript into the project's resource-scope OM; spawn the mission (born in `specifying`, `changeName` set) |
+| plan → mission | gate | graduate the child plan transcript into the project's resource-scope OM; create the mission worktree; spawn the mission (born in `specifying`, `changeName` set) |
 | specify → build | gate | — |
 | build → verify | auto | forced OM observe (bias reduction — verify starts on a compacted context) |
 | verify → build | auto | — (verify already wrote the fixing plan as `body`) |
-| verify → archive | gate | — |
+| verify → archive | gate | remove the mission worktree; keep the branch for merge/review |
 
 Verify's two outcomes fall out of the destination it picks: **clean → `to: archive`** (gate); **issues found → `to: build`** (auto). No special "verify decides" logic — the destination is the decision.
 
@@ -167,6 +168,84 @@ Enforced structurally at the tool layer (not via prompt prose):
 | archive | `merged` | sakti-archive |
 
 Transitions advance via the transition tool (which the server maps to status flips). The CLI transitions (`open-complete`, `specify-complete`, `build-complete`, `verify-pass`, `verify-fail`, `archived`) remain as the low-level state-machine primitives the server uses under the hood.
+
+## Worktree isolation
+
+Missions run in **git worktrees** isolated from the main repo. The main working tree is never committed, reverted, or modified by Sakti during graduation — change content lives on the mission branch only.
+
+### Worktree location
+
+Mission worktrees are created under the sakti data directory (not as sibling directories to the project):
+
+```
+~/.sakti/projects/<projectBasename>--<changeName>
+```
+
+If two projects share a basename and change name, `--<projectId[:8]>` is appended to disambiguate. The worktree branch is `sakti/<changeName>` (reused if it already exists from a prior mission).
+
+### Graduation sequence (plan → mission)
+
+When the user approves the plan→mission gate, the confirm route executes this sequence atomically (with rollback on failure):
+
+1. **Re-verify clean tree** — `preflightWorktree` checks that the main working tree is clean outside `.sakti/changes/<activeChange>/`. If not, the gate fails with a 500 and the pending transition is preserved for retry.
+2. **Create worktree** — `createMissionWorktree` creates `~/.sakti/projects/<basename>--<changeName>` on branch `sakti/<changeName>`. Records the pre-existing branch HEAD (if any) for rollback.
+3. **Absorb change content** — `.sakti/changes/<change>/` from main is copied into the worktree and committed on the mission branch as the first commit (`sakti: begin change <changeName>`). The specify agent then works entirely within the worktree.
+4. **Link dependency dirs** — Configured dependency/cache directories (see [Dependency symlinks](#dependency-symlinks)) that exist in main are symlinked into the worktree as absolute-path symlinks so missions can run project scripts without reinstalling.
+5. **Clean main change dir** — The (now-absorbed) `.sakti/changes/<change>/` is removed from the main working tree. Tracked change dirs are **skipped** (not deleted, not reverted) — removing tracked files would leave staged deletions. The content stays on main; "main stays clean" remains true because the content is already committed there.
+6. **Stamp session** — `changeName` and `worktreePath` are written to the plan session record.
+
+#### Failure rollback
+
+If any step after worktree creation fails (absorb, symlink, clean), the server:
+
+- Removes the created worktree (`worktree remove --force`).
+- Restores a pre-existing `sakti/<changeName>` branch to its original HEAD via `git branch -f`.
+- Deletes a newly-created branch entirely.
+- Re-throws the error. The pending transition stays set for retry.
+
+### Clean-tree guardrail (transition tool)
+
+The transition tool wrapper enforces the clean-tree invariant **before** opening the gate:
+
+- When the agent calls `transition({ to: "mission" })`, the wrapper resolves the active change name and calls `analyzeWorktreeForMission`.
+- The working tree must be clean outside `.sakti/changes/<activeChange>/`. Paths inside the change dir are allowed (they're what graduation absorbs).
+- If unrelated dirty paths are found, the wrapper returns `terminate: false` with an actionable message naming the unexpected path and the exact `preserveUnrelated: "stash"` opt-in call. The gate does **not** open.
+
+### Explicit stash opt-in
+
+When the user has unrelated dirty work and wants to proceed anyway, the agent can explicitly opt in:
+
+```
+transition({ to: "mission", body: "brief", preserveUnrelated: "stash" })
+```
+
+- Only the unrelated paths are stashed (via `git stash push --include-untracked`).
+- Change dir content remains uncommitted on disk for absorb.
+- The stash message is `sakti: preserve unrelated changes before mission <changeName>`.
+- Stashes are **never popped automatically** — the user controls when unrelated work returns.
+- If stashing itself fails, the gate does not open; the stash reference is returned in the tool response so the user can inspect it.
+
+### Dependency symlinks
+
+Dependency/cache directories from the main repo are symlinked into the worktree so missions can run build scripts without reinstalling. Configuration:
+
+- **Curated defaults** (when no override exists): `node_modules`, `.venv`, `venv`, `target`, `.cargo`, `vendor/bundle`, `.bundle`, `.gradle`, `.m2`, `vendor`, `zig-cache`, `.zig-cache`.
+- **Global override** via `settings.json` at `worktree.dependencySymlinkDirs`: a non-empty array of safe relative paths replaces the defaults. Entries must be relative (no `..`, no absolute paths). Malformed overrides fall back to defaults with a warning. An empty array also falls back to defaults.
+- Only directories that exist in main and don't already exist in the worktree are symlinked (no clobbering).
+
+### Desktop confirm handoff
+
+The desktop `PlanChat` component coordinates the plan→mission gate:
+
+1. `confirmTransition(sessionId, to, body, "approve")` calls `POST /api/sessions/:id/confirm`.
+2. On success, the confirm response's `changeName` and `worktreePath` are mirrored into the local session store.
+3. `createSession(projectId, title, changeName, worktreePath)` spawns the mission with the resolved paths.
+4. The plan session's profile is carried over to the mission session.
+5. If confirm returns `{ ok: false }` (server-side failure), **no mission is created** and no state is mutated — the user can retry.
+
+### Worktree teardown (archive → done)
+
+When the mission is archived, the worktree is removed (`git worktree remove --force`) but the branch is **kept** for merge/review. The `worktreePath` on the session is cleared to null.
 
 ## Reference: the ask tool is gone
 
