@@ -3,7 +3,7 @@ import { createSignal, type JSX, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
 /** Destination phases that render a gate card. Auto edges never reach the card. */
-export type TransitionGateTo = "archive" | "build" | "mission";
+export type TransitionGateTo = "archive" | "build" | "done" | "mission";
 
 const COPY: Record<
   TransitionGateTo,
@@ -15,6 +15,12 @@ const COPY: Record<
     title: "Ready to Archive",
     approve: "Archive",
     reject: "Request changes",
+    icon: FiCheckCircle,
+  },
+  done: {
+    title: "Archive Complete",
+    approve: "Finish & Remove Worktree",
+    reject: "Keep",
     icon: FiCheckCircle,
   },
 };

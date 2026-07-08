@@ -43,6 +43,15 @@ describe("TransitionCard", () => {
     expect(onReject).toHaveBeenCalledTimes(1);
   });
 
+  it("renders the done-destination copy with Finish/Keep buttons", () => {
+    render(() => (
+      <TransitionCard to="done" body="Archive complete." onApprove={() => {}} onReject={() => {}} />
+    ));
+    expect(screen.getByText("Archive Complete")).toBeTruthy();
+    expect(screen.getByText("Finish & Remove Worktree")).toBeTruthy();
+    expect(screen.getByText("Keep")).toBeTruthy();
+  });
+
   it("renders the body", () => {
     render(() => (
       <TransitionCard
