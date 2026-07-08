@@ -1,97 +1,89 @@
 ## Purpose
 
-The database schema defines all tables using Drizzle ORM. Tables use nanoid text primary keys, integer Unix timestamps, and are initialized with WAL mode and foreign key enforcement.
+The database schema defines all tables using Drizzle ORM with `node:sqlite`. Tables use UUID text primary keys, integer Unix timestamps (epoch ms), and are initialized with WAL mode and foreign key enforcement via migrations.
 
 ## Requirements
 
 ### Requirement: Schema defines projects table
-The database schema SHALL define a `projects` table with columns: `id` (text, primary key, nanoid), `name` (text, not null), `cwd` (text, not null, unique), `profileId` (text, nullable — references a profile id in `profiles.json`, null means use `defaultProfile`), `createdAt` (integer, not null), `updatedAt` (integer, not null). `profileId` SHALL NOT be a SQL foreign key (profiles live in a JSON file, not the DB).
+
+The system SHALL define a `projects` table with columns: `id` (text, primary key, UUID), `name` (text, not null), `cwd` (text, not null, unique), `createdAt` (integer, not null), `updatedAt` (integer, not null).
 
 #### Scenario: Create a new project
 - **WHEN** a project is inserted with a unique `cwd`
-- **THEN** the row is created with an auto-generated `id`, `profileId` null, and current timestamp
+- **THEN** the row is created with an auto-generated UUID `id` and current timestamp
 
 #### Scenario: Duplicate cwd rejected
 - **WHEN** a project is inserted with a `cwd` that already exists
 - **THEN** a unique constraint violation occurs
 
-#### Scenario: Project profile assignment
-- **WHEN** a project is updated with `profileId = "fast"`
-- **THEN** subsequent reads return `profileId = "fast"` (no DB-level constraint enforces the profile's existence)
-
 ### Requirement: Schema defines sessions table
-The database schema SHALL define a `sessions` table with columns: `id` (text, primary key, nanoid), `projectId` (text, foreign key to `projects.id`, not null), `parentSessionId` (text, foreign key to `sessions.id`, nullable), `title` (text, nullable), `modelId` (text, not null), `thinkingLevel` (text, not null, default "off"), `createdAt` (integer, not null), `updatedAt` (integer, not null).
 
-#### Scenario: Create a session for a project
+The system SHALL define a `sessions` table with columns: `id` (text, primary key, UUID), `projectId` (text, FK to `projects.id`, not null), `parentSessionId` (text, FK to `sessions.id`, nullable), `title` (text, nullable), `modelId` (text, nullable), `profileId` (text, nullable — references a profile in `profiles.json`, not a DB FK), `kind` (text, not null, default `"mission"`), `status` (text, not null, default `"specify"`), `changeName` (text, nullable — links mission to SDD change), `worktreePath` (text, nullable — isolated git worktree), `pendingTransitionTo` (text, nullable), `pendingTransitionBody` (text, nullable), `thinkingLevel` (text, not null, default `"off"`), `leafId` (text, nullable — current leaf entry), `createdAt` (integer, not null), `updatedAt` (integer, not null).
+
+#### Scenario: Create a session
 - **WHEN** a session is inserted with a valid `projectId`
-- **THEN** the row is created and linked to the project
+- **THEN** the row is created with `kind: "mission"`, `status: "specify"`, `thinkingLevel: "off"`, and current timestamp
 
-#### Scenario: Create a session with optional parent
-- **WHEN** a session is inserted with a valid `projectId` and a `parentSessionId` referencing an existing session
-- **THEN** the row is created linked to both the project and the parent session
+#### Scenario: Create session with parent
+- **WHEN** a session is inserted with a valid `parentSessionId`
+- **THEN** the row is linked to the parent session
 
-#### Scenario: Session without parent has null parentSessionId
-- **WHEN** a session is inserted without a `parentSessionId`
-- **THEN** the `parentSessionId` column is null
+#### Scenario: ModelId is nullable
+- **WHEN** a session is inserted without a `modelId`
+- **THEN** the column is null
 
-#### Scenario: List sessions for a project
-- **WHEN** sessions are queried by `projectId`
-- **THEN** all sessions for that project are returned, ordered by `createdAt` descending
+### Requirement: Schema defines session_entries table (session tree)
 
-### Requirement: Schema defines messages table
-The database schema SHALL define a `messages` table with columns: `id` (text, primary key, nanoid), `sessionId` (text, foreign key to `sessions.id`, not null), `role` (text, not null, one of: "user", "assistant", "tool"), `content` (text, not null), `toolCalls` (text, nullable, JSON-encoded array of tool calls for assistant messages), `toolCallId` (text, nullable, references the tool call this result responds to), `toolName` (text, nullable), `toolArguments` (text, nullable, JSON-encoded), `isError` (integer, nullable, 0/1), `usage` (text, nullable, JSON-encoded token usage), `createdAt` (integer, not null).
+The system SHALL define a `session_entries` table with columns: `id` (text, primary key, UUID), `sessionId` (text, FK to `sessions.id` with cascade delete, not null), `parentId` (text, nullable — parent entry in the tree), `sequence` (integer, not null, unique per session), `kind` (text, not null — entry type like `"message"`, `"label"`, `"leaf"`), `content` (text, not null — JSON-encoded `SessionTreeEntry`), `timestamp` (text, not null), `createdAt` (integer, not null), `turnId` (text, nullable, FK to `turns.id` with cascade delete), `isTurnSummary` (integer, boolean, not null, default false).
 
-#### Scenario: Store an assistant message with tool calls
-- **WHEN** an assistant message with 2 tool calls is inserted
-- **THEN** the `role` is "assistant", `toolCalls` contains the JSON-encoded tool call array, and `usage` contains token counts
+Indexes: unique on `(sessionId, sequence)`, index on `(sessionId, kind)`, index on `turnId`, unique on `(turnId)` where `isTurnSummary = 1`.
 
-#### Scenario: Store a tool result message
-- **WHEN** a tool result message is inserted
-- **THEN** the `role` is "tool", `toolCallId` references the originating tool call, `toolName` and `toolArguments` are stored, and `isError` indicates success/failure
+#### Scenario: Insert a session entry
+- **WHEN** a session entry is inserted
+- **THEN** the `sequence` auto-increments within the session
 
-#### Scenario: Load messages in chronological order
-- **WHEN** messages are queried by `sessionId` ordered by `createdAt`
-- **THEN** messages are returned in conversation order (oldest first)
+#### Scenario: Session entries are deleted with session
+- **WHEN** a session with entries is deleted
+- **THEN** all its entries are cascade-deleted
 
-### Requirement: Schema defines tool_executions table
-The database schema SHALL define a `tool_executions` table with columns: `id` (text, primary key, nanoid), `messageId` (text, foreign key to `messages.id`, not null), `sessionId` (text, foreign key to `sessions.id`, not null), `toolName` (text, not null), `arguments` (text, not null, JSON-encoded), `result` (text, nullable), `durationMs` (integer, nullable), `createdAt` (integer, not null).
+### Requirement: Schema defines turns table
 
-#### Scenario: Record a tool execution
-- **WHEN** a tool execution is inserted after a tool call completes
-- **THEN** the tool name, arguments, result, duration, and timestamp are persisted
+The system SHALL define a `turns` table with columns: `id` (text, primary key, UUID), `sessionId` (text, FK to `sessions.id` with cascade delete, not null), `sequence` (integer, not null), `startedAt` (integer, not null), `endedAt` (integer, nullable), `createdAt` (integer, not null). Unique index on `(sessionId, sequence)`.
 
-### Requirement: Schema defines costs table
-The database schema SHALL define a `costs` table with columns: `id` (text, primary key, nanoid), `sessionId` (text, foreign key to `sessions.id`, not null), `projectId` (text, foreign key to `projects.id`, not null), `inputTokens` (integer, not null), `outputTokens` (integer, not null), `costUsd` (real, not null), `modelId` (text, not null), `createdAt` (integer, not null).
-
-#### Scenario: Record LLM usage cost
-- **WHEN** an LLM response is received with token counts and cost
-- **THEN** the cost is recorded linked to both the session and project
-
-#### Scenario: Aggregate costs across project
-- **WHEN** costs are summed by `projectId`
-- **THEN** total input tokens, output tokens, and cost are returned
+#### Scenario: Record a turn
+- **WHEN** a turn is inserted for a session
+- **THEN** the sequence increments from the last turn
 
 ### Requirement: Schema defines settings table
-The database schema SHALL define a `settings` table with columns: `key` (text, primary key), `value` (text, not null), `updatedAt` (integer, not null). The table SHALL be used ONLY for per-session runtime overrides keyed with the `session:{sessionId}:{settingName}` convention. Global application settings SHALL NOT be stored in this table (they live in `settings.json`).
 
-#### Scenario: Get and set a per-session setting
-- **WHEN** a setting is upserted with key `"session:sess_1:auto_compaction"` and value `"true"`
-- **THEN** subsequent reads of that key return `"true"`
+The system SHALL define a `settings` table with columns: `key` (text, primary key), `value` (text, not null), `updatedAt` (integer, not null). Used for per-session runtime overrides (key convention `session:{sessionId}:{settingName}`).
 
-#### Scenario: Global settings are not stored in the table
-- **WHEN** a global app preference such as theme is written
-- **THEN** it is written to `settings.json` and no row is inserted into the `settings` table
+#### Scenario: Upsert a setting
+- **WHEN** a setting is upserted with a key and value
+- **THEN** the value is updated or the row is created
 
-### Requirement: Schema uses Drizzle ORM table definitions
-All tables SHALL be defined using Drizzle's `sqliteTable()` function in a single `schema.ts` file. Tables SHALL use nanoid for text primary keys and integer Unix timestamps for dates.
+### Requirement: Schema defines observational_memory table
 
-#### Scenario: Schema file exports all tables
+The system SHALL define an `observational_memory` table with columns for Observational Memory (OM) state: `id` (text, primary key, UUID), `lookupKey` (text, not null, indexed), `scope` (text, not null — `"thread"` or `"resource"`), `resourceId` (text, FK to `projects.id` with cascade delete), `threadId` (text, FK to `sessions.id` with cascade delete), plus OM content fields (`activeObservations`, `bufferedObservationChunks`, `bufferedReflection`, etc.), generation tracking (`originType`, `generationCount`, `config`), token accounting, state flags (`isObserving`, `isReflecting`, etc.), cursors, and timestamps.
+
+Index: on `lookupKey` for efficient lookup by `thread:{sessionId}` or `resource:{projectId}`.
+
+#### Scenario: Record OM generation
+- **WHEN** an OM record is inserted with a unique `lookupKey`
+- **THEN** the row is persisted with all generation metadata
+
+### Requirement: Database is initialized with WAL mode and migrations
+
+The system SHALL initialize a `node:sqlite` `DatabaseSync` with PRAGMA `journal_mode = WAL` and `foreign_keys = ON`, then run Drizzle migrations.
+
+#### Scenario: Initialize database
+- **WHEN** `initDatabase(sqlite)` is called on a new database
+- **THEN** WAL mode is enabled, foreign keys are enforced, and all table definitions are applied via migration
+
+### Requirement: Schema file exports all table definitions
+
+The system SHALL export all table definitions from a single `schema.ts` file.
+
+#### Scenario: Schema exports all tables
 - **WHEN** the schema module is imported
-- **THEN** it exports table definitions: `projects`, `sessions`, `messages`, `toolExecutions`, `costs`, `settings` (and SHALL NOT export `modelConfigs`)
-
-### Requirement: Database is initialized with WAL mode
-The database SHALL be opened with WAL journal mode for concurrent read/write support and `foreign_keys` pragma enabled.
-
-#### Scenario: Fresh database initialization
-- **WHEN** `initDatabase(dbPath)` is called on a new database file
-- **THEN** tables are created, WAL mode is enabled, and foreign keys are enforced
+- **THEN** it exports `projects`, `sessions`, `settings`, `sessionEntries`, `turns`, `observationalMemory`

@@ -1,15 +1,16 @@
 ## Purpose
 
-Repository classes provide typed data access over the database schema. Each repo encapsulates queries for one domain (projects, sessions, messages, costs, settings, model configs) and accepts a shared `DrizzleDB` instance.
+Repository classes provide typed data access over the database schema. Each repo encapsulates queries for one domain (projects, sessions, settings, turns) and accepts a shared `DrizzleDB` instance.
 
 ## Requirements
 
 ### Requirement: ProjectRepo manages project CRUD
-`ProjectRepo` SHALL provide methods: `create(name, cwd)`, `findById(id)`, `findByCwd(cwd)`, `list()`, `update(id, data)`, `delete(id)`. All methods SHALL return typed objects.
+
+`ProjectRepo` SHALL provide methods: `create(name, cwd)`, `findById(id)`, `findByCwd(cwd)`, `list()`, `update(id, data)`, `delete(id)`. IDs are generated as UUIDs.
 
 #### Scenario: Create and retrieve a project
 - **WHEN** `create("my-app", "/home/user/my-app")` is called
-- **THEN** a project is created with a unique ID, the given name and cwd, and current timestamps, and the project object is returned
+- **THEN** a project is created with a UUID, the given name and cwd, and current timestamps
 
 #### Scenario: Find project by cwd
 - **WHEN** `findByCwd("/home/user/my-app")` is called
@@ -20,60 +21,69 @@ Repository classes provide typed data access over the database schema. Each repo
 - **THEN** all projects are returned ordered by `createdAt` descending
 
 ### Requirement: SessionRepo manages session CRUD
-`SessionRepo` SHALL provide methods: `create(projectId, modelId, options?)`, `findById(id)`, `listByProject(projectId)`, `update(id, data)`, `delete(id)`.
 
-#### Scenario: Create a session for a project
-- **WHEN** `create("proj-1", "claude-sonnet-4-20250514")` is called
-- **THEN** a session is created linked to the project with the given model
+`SessionRepo` SHALL provide methods: `create(projectId, options?)`, `findById(id)`, `listByProject(projectId)`, `listChildPlansByProject(projectId)`, `findForkedChildren(parentId)`, `update(id, data)`, `delete(id)`.
+
+#### Scenario: Create a session
+- **WHEN** `create("proj-1", { modelId: "claude-sonnet-4-20250514" })` is called
+- **THEN** a session is created linked to the project with default `kind: "mission"` and `status: "specify"`
+
+#### Scenario: Create session with kind plan
+- **WHEN** `create("proj-1", { kind: "plan" })` is called
+- **THEN** a session with kind "plan" is created
 
 #### Scenario: List sessions for a project
 - **WHEN** `listByProject("proj-1")` is called
 - **THEN** all sessions for the project are returned ordered by `createdAt` descending
 
-### Requirement: MessageRepo provides message queries
-`MessageRepo` SHALL provide methods: `append(sessionId, message)`, `loadBySession(sessionId)`, `replaceForSession(sessionId, messages)`, `countBySession(sessionId)`.
+#### Scenario: Find forked children
+- **WHEN** `findForkedChildren("sess-1")` is called
+- **THEN** all sessions with `parentSessionId = "sess-1"` are returned
 
-#### Scenario: Append and load messages
-- **WHEN** 3 messages are appended to a session and then `loadBySession()` is called
-- **THEN** all 3 messages are returned in chronological order
+### Requirement: TurnRepo manages turn lifecycle
 
-#### Scenario: Replace messages atomically
-- **WHEN** `replaceForSession(sessionId, newMessages)` is called
-- **THEN** all existing messages for the session are deleted and the new messages are inserted within a transaction
+`TurnRepo` SHALL provide methods: `create(sessionId, startedAt)`, `finalize(id, endedAt)`, `finalizeLatest(sessionId, endedAt)`, `listBySession(sessionId)`, `getLatest(sessionId)`, `markSummary(turnId)`.
 
-#### Scenario: Count messages
-- **WHEN** `countBySession(sessionId)` is called on a session with 10 messages
-- **THEN** 10 is returned
+#### Scenario: Create and finalize a turn
+- **WHEN** `create("sess-1", 1000)` and then `finalize(id, 2000)` are called
+- **THEN** a turn is created with null `endedAt`, then updated with the end time
 
-### Requirement: CostRepo records and aggregates costs
-`CostRepo` SHALL provide methods: `record(sessionId, projectId, usage, modelId)` and `aggregateByProject(projectId)`, `aggregateBySession(sessionId)`.
+#### Scenario: Finalize latest open turn
+- **WHEN** `finalizeLatest("sess-1", 3000)` is called
+- **THEN** the latest turn with null `endedAt` is finalized
 
-#### Scenario: Record LLM cost
-- **WHEN** `record("sess-1", "proj-1", { inputTokens: 100, outputTokens: 50, costUsd: 0.002 }, "claude-sonnet-4-20250514")` is called
-- **THEN** the cost row is persisted
+#### Scenario: List turns in sequence order
+- **WHEN** `listBySession("sess-1")` is called
+- **THEN** all turns are returned ordered by sequence ascending
 
-#### Scenario: Aggregate project costs
-- **WHEN** `aggregateByProject("proj-1")` is called
-- **THEN** total input tokens, output tokens, and cost across all sessions are returned
+#### Scenario: Mark turn summary flags the last assistant entry
+- **WHEN** `markSummary(turnId)` is called on a turn with an assistant message
+- **THEN** the last assistant entry in that turn has `isTurnSummary: true`
 
 ### Requirement: SettingsRepo manages key-value settings
-`SettingsRepo` SHALL provide methods scoped to per-session runtime overrides: `get(key)`, `set(key, value)`, `getAll()`, and `getByPrefix(prefix)`. It SHALL be used ONLY for keys matching the `session:{sessionId}:{settingName}` convention. Global application settings SHALL NOT pass through `SettingsRepo`; they are read and written via the file-backed settings store (see `app-config-files`).
 
-#### Scenario: Set and get a per-session setting
-- **WHEN** `set("session:sess_1:auto_compaction", "true")` is called, then `get("session:sess_1:auto_compaction")` is called
+`SettingsRepo` SHALL provide methods: `get(key)`, `set(key, value)`, `getByPrefix(prefix)`, `getAll()`, `delete(key)`.
+
+#### Scenario: Set and get a setting
+- **WHEN** `set("session:sess_1:auto_compaction", "true")` is called, then `get("session:sess_1:auto_compaction")`
 - **THEN** `"true"` is returned
 
 #### Scenario: Get nonexistent setting
 - **WHEN** `get("session:sess_1:nope")` is called
 - **THEN** null is returned
 
-#### Scenario: Global settings do not use SettingsRepo
-- **WHEN** a global preference such as theme is read or written
-- **THEN** the operation goes through the file-backed settings store, not `SettingsRepo`
+#### Scenario: Get all by prefix
+- **WHEN** `getByPrefix("session:sess_1:")` is called after storing two settings with that prefix
+- **THEN** both settings are returned
+
+#### Scenario: Delete a setting
+- **WHEN** `delete("session:sess_1:setting")` is called
+- **THEN** the setting row is removed
 
 ### Requirement: All repos accept a Drizzle database instance
-Each repo SHALL be constructed with a `DrizzleDatabase` instance. Repos are stateless — they don't own the connection.
+
+Each repo SHALL be constructed with a `DrizzleDB` instance. Repos are stateless.
 
 #### Scenario: Create repos with shared database
 - **WHEN** multiple repos are created with the same database instance
-- **THEN** they share the same transaction context when called sequentially
+- **THEN** they share the same connection
