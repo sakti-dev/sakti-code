@@ -12,7 +12,7 @@ import { resolveOmConfig } from "./index.ts";
  * then force-reflects, landing the reflection in the main plan's memory.
  *
  * Mirrors `buildForceReset`. Extracted so the OM resolution is unit-testable;
- * the confirm route binds `AskCtx.graduate` to this for plan sessions only.
+ * the plan→mission transition binds `graduate` to this for plan sessions only.
  *
  * Best-effort: if OM isn't configured for the project, graduation is skipped —
  * never strand the mission spawn on a reflection failure.
