@@ -24,7 +24,6 @@ export const STATE_FIELDS = [
   "verify_result",
   "verification_report",
   "branch_status",
-  "design_doc",
   "plan",
   "base_ref",
   "verified_at",
@@ -105,7 +104,7 @@ export interface StateTransitionOptions {
  * Applies a validated phase transition.
  *
  * Validates: current phase matches the event's expected source phase, and any
- * required evidence (artifacts, design_doc, verification_report) is present.
+ * required evidence (artifacts, verification_report) is present.
  * Does NOT run build commands or deep content checks — that's the guard's job.
  */
 export async function stateTransition(
@@ -133,37 +132,29 @@ export async function stateTransition(
   switch (event) {
     case "open-complete": {
       requirePhase("open");
-      const artifacts =
-        metadata.workflow === "full"
-          ? ["proposal.md", "design.md", "tasks.md"]
-          : ["proposal.md", "tasks.md"];
-      for (const artifact of artifacts) {
+      // Plan phase produces only proposal.md; the specify phase produces the rest.
+      try {
+        await fs.access(path.join(changeDir, "proposal.md"));
+      } catch {
+        throw new Error(
+          "Cannot transition 'open-complete': proposal.md must exist before leaving open",
+        );
+      }
+      // Both workflows now pass through specify (hotfix runs it in autonomous mode).
+      apply({ phase: "specify" });
+      break;
+    }
+
+    case "specify-complete": {
+      requirePhase("specify");
+      for (const artifact of ["design.md", "tasks.md"]) {
         try {
           await fs.access(path.join(changeDir, artifact));
         } catch {
           throw new Error(
-            `Cannot transition 'open-complete': ${artifact} must exist and be non-empty before leaving open`,
+            `Cannot transition 'specify-complete': ${artifact} must exist before leaving specify`,
           );
         }
-      }
-      const nextPhase = metadata.workflow === "full" ? "design" : "build";
-      apply({ phase: nextPhase });
-      break;
-    }
-
-    case "design-complete": {
-      requirePhase("design");
-      if (!metadata.design_doc) {
-        throw new Error(
-          "Cannot transition 'design-complete': design_doc must point to an existing Design Doc before leaving design",
-        );
-      }
-      try {
-        await fs.access(path.join(changeDir, metadata.design_doc));
-      } catch {
-        throw new Error(
-          `Cannot transition 'design-complete': design_doc file '${metadata.design_doc}' does not exist`,
-        );
       }
       apply({ phase: "build" });
       break;

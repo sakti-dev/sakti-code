@@ -16,7 +16,6 @@ describe("ChangeMetadataSchema state machine fields", () => {
       expect(result.data.direct_override).toBe(false);
       expect(result.data.build_mode).toBeNull();
       expect(result.data.isolation).toBeNull();
-      expect(result.data.design_doc).toBeNull();
       expect(result.data.base_ref).toBeNull();
     });
   });
@@ -39,7 +38,7 @@ describe("ChangeMetadataSchema state machine fields", () => {
     });
 
     it("accepts all valid phases", () => {
-      for (const phase of ["open", "design", "build", "verify", "archive"] as const) {
+      for (const phase of ["open", "specify", "build", "verify", "archive"] as const) {
         const result = ChangeMetadataSchema.safeParse({
           schema: "spec-driven",
           phase,
@@ -62,7 +61,7 @@ describe("ChangeMetadataSchema state machine fields", () => {
       const result = ChangeMetadataSchema.safeParse({
         schema: "spec-driven",
         build_mode: null,
-        design_doc: null,
+        base_ref: null,
       });
       expect(result.success).toBe(true);
     });

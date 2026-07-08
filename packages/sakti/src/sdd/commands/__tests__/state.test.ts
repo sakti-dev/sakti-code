@@ -130,58 +130,49 @@ describe("stateTransition", () => {
     return parsed[field];
   }
 
-  it("open-complete advances to design for full workflow when artifacts exist", async () => {
+  it("open-complete advances to specify when proposal.md exists", async () => {
     seed("full", "open");
     await fs.writeFile(path.join(changeDir, "proposal.md"), "# proposal");
-    await fs.writeFile(path.join(changeDir, "design.md"), "# design");
-    await fs.writeFile(path.join(changeDir, "tasks.md"), "# tasks");
 
     await stateTransition(changeDir, "open-complete", { projectRoot: tmpDir });
-    expect(await readField("phase")).toBe("design");
+    expect(await readField("phase")).toBe("specify");
   });
 
-  it("open-complete advances to build for hotfix workflow", async () => {
+  it("open-complete advances to specify for hotfix too (no longer skips)", async () => {
     seed("hotfix", "open");
     await fs.writeFile(path.join(changeDir, "proposal.md"), "# proposal");
-    await fs.writeFile(path.join(changeDir, "tasks.md"), "# tasks");
 
     await stateTransition(changeDir, "open-complete", { projectRoot: tmpDir });
-    expect(await readField("phase")).toBe("build");
+    expect(await readField("phase")).toBe("specify");
   });
 
-  it("open-complete fails when artifacts are missing", async () => {
+  it("open-complete fails when proposal.md is missing", async () => {
     seed("full", "open");
     await expect(
       stateTransition(changeDir, "open-complete", { projectRoot: tmpDir }),
-    ).rejects.toThrow(/proposal|design|tasks/i);
+    ).rejects.toThrow(/proposal/i);
   });
 
   it("open-complete fails when phase is not open", async () => {
-    seed("full", "design");
+    seed("full", "specify");
     await expect(
       stateTransition(changeDir, "open-complete", { projectRoot: tmpDir }),
     ).rejects.toThrow(/phase/i);
   });
 
-  it("design-complete requires design_doc", async () => {
-    seed("full", "design");
+  it("specify-complete requires design.md and tasks.md", async () => {
+    seed("full", "specify");
     await expect(
-      stateTransition(changeDir, "design-complete", { projectRoot: tmpDir }),
-    ).rejects.toThrow(/design_doc/i);
+      stateTransition(changeDir, "specify-complete", { projectRoot: tmpDir }),
+    ).rejects.toThrow(/design\.md|tasks\.md/i);
   });
 
-  it("design-complete advances to build when design_doc is set and file exists", async () => {
-    seed("full", "design", { design_doc: "technical-design.md" });
-    await fs.writeFile(path.join(changeDir, "technical-design.md"), "# Technical Design");
-    await stateTransition(changeDir, "design-complete", { projectRoot: tmpDir });
+  it("specify-complete advances to build when design.md + tasks.md exist", async () => {
+    seed("full", "specify");
+    await fs.writeFile(path.join(changeDir, "design.md"), "# Design");
+    await fs.writeFile(path.join(changeDir, "tasks.md"), "# Tasks");
+    await stateTransition(changeDir, "specify-complete", { projectRoot: tmpDir });
     expect(await readField("phase")).toBe("build");
-  });
-
-  it("design-complete fails when design_doc file does not exist", async () => {
-    seed("full", "design", { design_doc: "technical-design.md" });
-    await expect(
-      stateTransition(changeDir, "design-complete", { projectRoot: tmpDir }),
-    ).rejects.toThrow(/design_doc.*exist|exist.*design_doc/i);
   });
 
   it("build-complete advances to verify", async () => {

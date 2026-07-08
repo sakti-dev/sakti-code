@@ -27,12 +27,12 @@ export type InitiativeLink = z.infer<typeof InitiativeLinkSchema>;
 export const WorkflowSchema = z.enum(["full", "hotfix"]);
 export type Workflow = z.infer<typeof WorkflowSchema>;
 
-export const PhaseSchema = z.enum(["open", "design", "build", "verify", "archive"]);
+export const PhaseSchema = z.enum(["open", "specify", "build", "verify", "archive"]);
 export type Phase = z.infer<typeof PhaseSchema>;
 
 export const StateTransitionEventSchema = z.enum([
   "open-complete",
-  "design-complete",
+  "specify-complete",
   "build-complete",
   "verify-pass",
   "verify-fail",
@@ -77,7 +77,6 @@ export const ChangeMetadataSchema = z.object({
   branch_status: z.enum(["pending", "handled"]).default("pending"),
 
   // State machine — links
-  design_doc: z.string().nullable().default(null),
   plan: z.string().nullable().default(null),
   base_ref: z.string().nullable().default(null),
   verified_at: z.string().nullable().default(null),
