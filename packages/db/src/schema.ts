@@ -23,6 +23,10 @@ export const sessions = sqliteTable("sessions", {
   // SDD task lifecycle: specifying → building → review → merged.
   // Plan sessions are unaffected; only mission sessions use this column.
   status: text("status").notNull().default("specifying"),
+  // Links a mission session to its SDD change (set when the mission is created
+  // from a plan graduation). Null for plan sessions / pre-linkage missions.
+  // Used by the runtime to resolve the change dir for progress-aware reminders.
+  changeName: text("change_name"),
   // Pending ask tool-call awaiting a user confirm/revise action. Set
   // server-side when an agent's `ask` tool-call of a known kind completes;
   // cleared on confirm, reject, or the next run. Nullable — null means no
