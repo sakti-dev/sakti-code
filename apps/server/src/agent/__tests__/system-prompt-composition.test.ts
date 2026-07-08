@@ -8,7 +8,6 @@ import {
   EXPLORE_PROMPT,
   GENERAL_PROMPT,
   PLAN_PROMPT,
-  SPEC_PROMPT,
 } from "../config/prompts.ts";
 
 function mockTool(name: string, description: string): AgentTool {
@@ -76,10 +75,6 @@ describe("base + agent section composition", () => {
     expect(BUILD_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
   });
 
-  it("SPEC_PROMPT starts with BASE_PROMPT", () => {
-    expect(SPEC_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
-  });
-
   it("PLAN_PROMPT starts with BASE_PROMPT", () => {
     expect(PLAN_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
   });
@@ -92,22 +87,19 @@ describe("base + agent section composition", () => {
     expect(GENERAL_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
   });
 
-  it("BUILD_PROMPT contains build-specific section after base", () => {
+  it("BUILD_PROMPT is neutral and defers to the skill", () => {
     const section = BUILD_PROMPT.slice(BASE_PROMPT.length);
     expect(section).toContain("Build agent");
-    expect(section).toContain('ask({ kind: "completion"');
+    expect(section).toContain("skill");
+    // Neutral prompt must NOT hardcode phase-specific handoff behavior.
+    expect(section).not.toContain('ask({ kind: "completion"');
   });
 
-  it("SPEC_PROMPT contains spec-specific section after base", () => {
-    const section = SPEC_PROMPT.slice(BASE_PROMPT.length);
-    expect(section).toContain("Spec agent");
-    expect(section).toContain('ask({ kind: "spec"');
-  });
-
-  it("PLAN_PROMPT contains plan-specific section after base", () => {
+  it("PLAN_PROMPT is neutral and defers to the skill", () => {
     const section = PLAN_PROMPT.slice(BASE_PROMPT.length);
     expect(section).toContain("Plan agent");
-    expect(section).toContain('ask({ kind: "session"');
+    expect(section).toContain("skill");
+    expect(section).not.toContain('ask({ kind: "session"');
   });
 
   it("BASE_PROMPT contains tone and style guidance", () => {

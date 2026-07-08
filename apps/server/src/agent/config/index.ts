@@ -8,7 +8,6 @@ export {
   EXPLORE_PROMPT,
   GENERAL_PROMPT,
   PLAN_PROMPT,
-  SPEC_PROMPT,
   VERIFY_PROMPT,
 } from "./prompts.ts";
 
