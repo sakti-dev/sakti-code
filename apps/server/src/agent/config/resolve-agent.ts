@@ -26,8 +26,8 @@ export function resolveAgentByName(name: string, loadedAgents: AgentDefinition[]
 /**
  * Resolve the agent for a session based on its kind + status + per-session
  * override. Per-session override wins; otherwise `plan` kind → plan agent,
- * `mission` kind in the `review` status → verify agent (edit-denied), and
- * all other mission statuses (specifying, building, merged) → build agent.
+ * `mission` kind in the `verify` status → verify agent (edit-denied), and
+ * all other mission statuses (specify, build, archive) → build agent.
  *
  * The "specifying → build" routing is intentional: the specify phase uses the
  * sakti-specify skill (force-injected at run start) to keep the agent on-task
@@ -52,7 +52,7 @@ export function resolveSessionAgentForKind(
     name = perSessionOverride;
   } else if (kind === "plan") {
     name = "plan";
-  } else if (kind === "mission" && status === "review") {
+  } else if (kind === "mission" && status === "verify") {
     name = "verify";
   } else {
     name = DEFAULT_AGENT_NAME;

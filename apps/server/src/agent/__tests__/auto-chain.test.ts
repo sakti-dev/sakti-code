@@ -14,7 +14,7 @@ describe("runAgentStream auto-chain across auto-edges", () => {
   it("chains build→verify (auto) and delivers the <instruction> as the next run's message", async () => {
     const { ctx, db } = await makeContext();
     const project = await ctx.repos.projects.create("chain", "/tmp/chain");
-    const session = await ctx.repos.sessions.create(project.id, { status: "building" });
+    const session = await ctx.repos.sessions.create(project.id, { status: "build" });
     const storage = new SqliteSessionStorage(db, session.id, {
       id: session.id,
       createdAt: new Date().toISOString(),
@@ -41,9 +41,9 @@ describe("runAgentStream auto-chain across auto-edges", () => {
     try {
       await runAgentStream(ctx, session.id, "go", storage, { send: () => {} });
       expect(calls).toBeGreaterThanOrEqual(2); // build run + auto-chained verify run
-      // Status flipped building → review (build→verify edge).
+      // Status flipped build → verify (build→verify edge).
       const after = ctx.repos.sessions.findById(session.id);
-      expect(after?.status).toBe("review");
+      expect(after?.status).toBe("verify");
       // The chained verify run received the verify <instruction> as its message.
       expect(messages[1]).toContain("<instruction>");
       expect(messages[1]).toContain("verify mode");
@@ -55,7 +55,7 @@ describe("runAgentStream auto-chain across auto-edges", () => {
   it("chains verify→build (auto) when verify finds issues", async () => {
     const { ctx, db } = await makeContext();
     const project = await ctx.repos.projects.create("chain2", "/tmp/chain2");
-    const session = await ctx.repos.sessions.create(project.id, { status: "review" });
+    const session = await ctx.repos.sessions.create(project.id, { status: "verify" });
     const storage = new SqliteSessionStorage(db, session.id, {
       id: session.id,
       createdAt: new Date().toISOString(),
@@ -79,7 +79,7 @@ describe("runAgentStream auto-chain across auto-edges", () => {
     try {
       await runAgentStream(ctx, session.id, "verify", storage, { send: () => {} });
       expect(calls).toBeGreaterThanOrEqual(2); // verify run + auto-chained build run
-      expect(ctx.repos.sessions.findById(session.id)?.status).toBe("building");
+      expect(ctx.repos.sessions.findById(session.id)?.status).toBe("build");
     } finally {
       spy.mockRestore();
     }
@@ -88,7 +88,7 @@ describe("runAgentStream auto-chain across auto-edges", () => {
   it("pauses at a gate edge (verify→archive) — no auto-chain, pending stays", async () => {
     const { ctx, db } = await makeContext();
     const project = await ctx.repos.projects.create("gate", "/tmp/gate");
-    const session = await ctx.repos.sessions.create(project.id, { status: "review" });
+    const session = await ctx.repos.sessions.create(project.id, { status: "verify" });
     const storage = new SqliteSessionStorage(db, session.id, {
       id: session.id,
       createdAt: new Date().toISOString(),
@@ -113,7 +113,7 @@ describe("runAgentStream auto-chain across auto-edges", () => {
       await runAgentStream(ctx, session.id, "verify", storage, { send: () => {} });
       expect(calls).toBe(1); // gate → no chained run
       const after = ctx.repos.sessions.findById(session.id);
-      expect(after?.status).toBe("review"); // unchanged — gate doesn't flip
+      expect(after?.status).toBe("verify"); // unchanged — gate doesn't flip
       expect(after?.pendingTransitionTo).toBe("archive"); // persists for confirm route
     } finally {
       spy.mockRestore();
@@ -123,7 +123,7 @@ describe("runAgentStream auto-chain across auto-edges", () => {
   it("stops when a run ends without a transition", async () => {
     const { ctx, db } = await makeContext();
     const project = await ctx.repos.projects.create("stop", "/tmp/stop");
-    const session = await ctx.repos.sessions.create(project.id, { status: "building" });
+    const session = await ctx.repos.sessions.create(project.id, { status: "build" });
     const storage = new SqliteSessionStorage(db, session.id, {
       id: session.id,
       createdAt: new Date().toISOString(),
@@ -149,7 +149,7 @@ describe("runAgentStream auto-chain across auto-edges", () => {
   it("injects a <reminder> when an autonomous build run stalls, then re-runs", async () => {
     const { ctx, db } = await makeContext();
     const project = await ctx.repos.projects.create("stall", "/tmp/stall");
-    const session = await ctx.repos.sessions.create(project.id, { status: "building" });
+    const session = await ctx.repos.sessions.create(project.id, { status: "build" });
     const storage = new SqliteSessionStorage(db, session.id, {
       id: session.id,
       createdAt: new Date().toISOString(),
@@ -210,7 +210,7 @@ describe("runAgentStream auto-chain across auto-edges", () => {
     );
     const project = await ctx.repos.projects.create("progress", cwd);
     const session = await ctx.repos.sessions.create(project.id, {
-      status: "building",
+      status: "build",
       changeName: "add-thing",
     });
     const storage = new SqliteSessionStorage(db, session.id, {
@@ -238,7 +238,7 @@ describe("runAgentStream auto-chain across auto-edges", () => {
   it("depth cap stops the auto-chain after MAX_CHAIN_DEPTH iterations", async () => {
     const { ctx, db } = await makeContext();
     const project = await ctx.repos.projects.create("depth", "/tmp/depth");
-    const session = await ctx.repos.sessions.create(project.id, { status: "building" });
+    const session = await ctx.repos.sessions.create(project.id, { status: "build" });
     const storage = new SqliteSessionStorage(db, session.id, {
       id: session.id,
       createdAt: new Date().toISOString(),
@@ -259,7 +259,7 @@ describe("runAgentStream auto-chain across auto-edges", () => {
         };
       };
       const currentStatus = c.repos.sessions.findById(sid).status;
-      if (currentStatus === "building") {
+      if (currentStatus === "build") {
         await c.repos.sessions.update(sid, {
           pendingTransitionTo: "verify",
           pendingTransitionBody: "done",

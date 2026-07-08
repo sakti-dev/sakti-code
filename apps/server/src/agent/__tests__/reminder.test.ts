@@ -2,14 +2,14 @@ import { describe, expect, it } from "vite-plus/test";
 import { autonomousPhaseForSession, buildReminder } from "../reminder.ts";
 
 describe("autonomousPhaseForSession", () => {
-  it("maps building → build, review → verify", () => {
-    expect(autonomousPhaseForSession({ kind: "mission", status: "building" })).toBe("build");
-    expect(autonomousPhaseForSession({ kind: "mission", status: "review" })).toBe("verify");
+  it("maps build → build, verify → verify", () => {
+    expect(autonomousPhaseForSession({ kind: "mission", status: "build" })).toBe("build");
+    expect(autonomousPhaseForSession({ kind: "mission", status: "verify" })).toBe("verify");
   });
 
   it("returns null for specify (interactive) and plan sessions", () => {
-    expect(autonomousPhaseForSession({ kind: "mission", status: "specifying" })).toBeNull();
-    expect(autonomousPhaseForSession({ kind: "plan", status: "specifying" })).toBeNull();
+    expect(autonomousPhaseForSession({ kind: "mission", status: "specify" })).toBeNull();
+    expect(autonomousPhaseForSession({ kind: "plan", status: "specify" })).toBeNull();
   });
 });
 

@@ -10,24 +10,20 @@ describe("getBuiltinSkillForPhase", () => {
     expect(getBuiltinSkillForPhase("plan")).toBe("sakti-plan");
   });
 
-  it("maps specifying status (specify phase) to sakti-specify skill", () => {
+  it("maps specify phase to sakti-specify skill", () => {
     expect(getBuiltinSkillForPhase("specify")).toBe("sakti-specify");
-    expect(getBuiltinSkillForPhase("specifying")).toBe("sakti-specify");
   });
 
-  it("maps building status to sakti-build skill", () => {
+  it("maps build phase to sakti-build skill", () => {
     expect(getBuiltinSkillForPhase("build")).toBe("sakti-build");
-    expect(getBuiltinSkillForPhase("building")).toBe("sakti-build");
   });
 
-  it("maps review status (verify phase) to sakti-verify skill", () => {
+  it("maps verify phase to sakti-verify skill", () => {
     expect(getBuiltinSkillForPhase("verify")).toBe("sakti-verify");
-    expect(getBuiltinSkillForPhase("review")).toBe("sakti-verify");
   });
 
-  it("maps merged status (archive phase) to sakti-archive skill", () => {
+  it("maps archive phase to sakti-archive skill", () => {
     expect(getBuiltinSkillForPhase("archive")).toBe("sakti-archive");
-    expect(getBuiltinSkillForPhase("merged")).toBe("sakti-archive");
   });
 
   it("returns undefined for unknown phases", () => {

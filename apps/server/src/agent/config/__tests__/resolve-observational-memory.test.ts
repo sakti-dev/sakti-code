@@ -232,28 +232,28 @@ describe("resolveOmConfig", () => {
 });
 
 describe("resolveOmConfig — skillFilterRoot", () => {
-  it("sets skillFilterRoot for mission in building status", () => {
+  it("sets skillFilterRoot for mission in build status", () => {
     const ctx = makeCtx(PROFILES, {}, { getApiKey: () => "sk-test" });
-    const result = resolveOmConfig(ctx, { ...SESSION, status: "building" });
+    const result = resolveOmConfig(ctx, { ...SESSION, status: "build" });
     expect(result?.skillFilterRoot).toBeDefined();
     expect(typeof result!.skillFilterRoot).toBe("string");
   });
 
-  it("sets skillFilterRoot for mission in specifying status", () => {
+  it("sets skillFilterRoot for mission in specify status", () => {
     const ctx = makeCtx(PROFILES, {}, { getApiKey: () => "sk-test" });
-    const result = resolveOmConfig(ctx, { ...SESSION, status: "specifying" });
+    const result = resolveOmConfig(ctx, { ...SESSION, status: "specify" });
     expect(result?.skillFilterRoot).toBeDefined();
   });
 
-  it("sets skillFilterRoot for mission in review status", () => {
+  it("sets skillFilterRoot for mission in verify status", () => {
     const ctx = makeCtx(PROFILES, {}, { getApiKey: () => "sk-test" });
-    const result = resolveOmConfig(ctx, { ...SESSION, status: "review" });
+    const result = resolveOmConfig(ctx, { ...SESSION, status: "verify" });
     expect(result?.skillFilterRoot).toBeDefined();
   });
 
-  it("omits skillFilterRoot when mission status is merged (archive phase)", () => {
+  it("omits skillFilterRoot when mission status is archive (archive phase)", () => {
     const ctx = makeCtx(PROFILES, {}, { getApiKey: () => "sk-test" });
-    const result = resolveOmConfig(ctx, { ...SESSION, status: "merged" });
+    const result = resolveOmConfig(ctx, { ...SESSION, status: "archive" });
     expect(result?.skillFilterRoot).toBeUndefined();
   });
 });

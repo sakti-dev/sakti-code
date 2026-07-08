@@ -5,7 +5,7 @@ import { getBuiltinSkillForPhase } from "../config/phase-skills.ts";
 
 describe("runner skill injection (unit)", () => {
   it("builds initialMessages for the build phase", () => {
-    const skillName = getBuiltinSkillForPhase("building");
+    const skillName = getBuiltinSkillForPhase("build");
     expect(skillName).toBe("sakti-build");
 
     const skill: Skill = {
@@ -30,9 +30,9 @@ describe("runner skill injection (unit)", () => {
 
   it("maps all 5 phases to their skills", () => {
     expect(getBuiltinSkillForPhase("plan")).toBe("sakti-plan");
-    expect(getBuiltinSkillForPhase("specifying")).toBe("sakti-specify");
-    expect(getBuiltinSkillForPhase("building")).toBe("sakti-build");
-    expect(getBuiltinSkillForPhase("review")).toBe("sakti-verify");
-    expect(getBuiltinSkillForPhase("merged")).toBe("sakti-archive");
+    expect(getBuiltinSkillForPhase("specify")).toBe("sakti-specify");
+    expect(getBuiltinSkillForPhase("build")).toBe("sakti-build");
+    expect(getBuiltinSkillForPhase("verify")).toBe("sakti-verify");
+    expect(getBuiltinSkillForPhase("archive")).toBe("sakti-archive");
   });
 });

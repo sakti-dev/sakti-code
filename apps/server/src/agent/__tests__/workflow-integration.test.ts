@@ -7,10 +7,10 @@ describe("phase workflow integration", () => {
   it("for each phase, the correct skill is mapped and injection messages build correctly", () => {
     const cases: Array<{ phase: string; expectedSkill: string }> = [
       { phase: "plan", expectedSkill: "sakti-plan" },
-      { phase: "specifying", expectedSkill: "sakti-specify" },
-      { phase: "building", expectedSkill: "sakti-build" },
-      { phase: "review", expectedSkill: "sakti-verify" },
-      { phase: "merged", expectedSkill: "sakti-archive" },
+      { phase: "specify", expectedSkill: "sakti-specify" },
+      { phase: "build", expectedSkill: "sakti-build" },
+      { phase: "verify", expectedSkill: "sakti-verify" },
+      { phase: "archive", expectedSkill: "sakti-archive" },
     ];
 
     for (const { phase, expectedSkill } of cases) {

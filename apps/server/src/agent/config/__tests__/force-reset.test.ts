@@ -66,11 +66,11 @@ describe("buildForceReset", () => {
       scope: "thread",
     } as unknown as ReturnType<typeof resolveOmConfig>);
 
-    await buildForceReset(ctx, { ...session, status: "review" })("s1");
+    await buildForceReset(ctx, { ...session, status: "verify" })("s1");
 
     expect(resolveOmConfig).toHaveBeenCalledWith(
       ctx,
-      expect.objectContaining({ status: "review" }),
+      expect.objectContaining({ status: "verify" }),
     );
   });
 });

@@ -9,7 +9,7 @@ function session(overrides: Partial<Record<string, unknown>> = {}) {
     kind: "mission",
     projectId: "p1",
     profileId: null,
-    status: "building",
+    status: "build",
     ...overrides,
   };
 }
@@ -36,11 +36,11 @@ function makeCtx() {
 }
 
 describe("applyTransition", () => {
-  it("specify→build: flips status to building, no observe/graduation", async () => {
+  it("specify→build: flips status to build, no observe/graduation", async () => {
     const { ctx, updates, forceReset, graduate } = makeCtx();
     const edge = getEdge("specify", "build");
-    await applyTransition(ctx, session({ status: "specifying" }), edge);
-    expect(updates[0]?.data).toEqual({ status: "building" });
+    await applyTransition(ctx, session({ status: "specify" }), edge);
+    expect(updates[0]?.data).toEqual({ status: "build" });
     expect(forceReset).not.toHaveBeenCalled();
     expect(graduate).not.toHaveBeenCalled();
   });
@@ -62,24 +62,24 @@ describe("applyTransition", () => {
       log: { agent: { warn: vi.fn(), info: vi.fn() } },
     } as unknown as Parameters<typeof applyTransition>[0];
     const edge = getEdge("build", "verify");
-    await applyTransition(ctx, session({ status: "building" }), edge);
-    expect(order).toEqual(["observe", 'status:{"status":"review"}']);
+    await applyTransition(ctx, session({ status: "build" }), edge);
+    expect(order).toEqual(["observe", 'status:{"status":"verify"}']);
   });
 
   it("plan→mission: runs graduation, no status flip on the plan session", async () => {
     const { ctx, updates, graduate, forceReset } = makeCtx();
     const edge = getEdge("plan", "mission");
-    await applyTransition(ctx, session({ kind: "plan", status: "specifying" }), edge);
+    await applyTransition(ctx, session({ kind: "plan", status: "specify" }), edge);
     expect(graduate).toHaveBeenCalledWith("s1");
     expect(forceReset).not.toHaveBeenCalled();
     expect(updates).toHaveLength(0);
   });
 
-  it("verify→archive: flips status to merged", async () => {
+  it("verify→archive: flips status to archive", async () => {
     const { ctx, updates } = makeCtx();
     const edge = getEdge("verify", "archive");
-    await applyTransition(ctx, session({ status: "review" }), edge);
-    expect(updates[0]?.data).toEqual({ status: "merged" });
+    await applyTransition(ctx, session({ status: "verify" }), edge);
+    expect(updates[0]?.data).toEqual({ status: "archive" });
   });
 
   it("swallows a forced-observe failure (status flip still lands)", async () => {
@@ -99,9 +99,7 @@ describe("applyTransition", () => {
       log: { agent: { warn: vi.fn(), info: vi.fn() } },
     } as unknown as Parameters<typeof applyTransition>[0];
     const edge = getEdge("build", "verify");
-    await expect(
-      applyTransition(ctx, session({ status: "building" }), edge),
-    ).resolves.toBeUndefined();
-    expect(ctx.repos.sessions.update).toHaveBeenCalledWith("s1", { status: "review" });
+    await expect(applyTransition(ctx, session({ status: "build" }), edge)).resolves.toBeUndefined();
+    expect(ctx.repos.sessions.update).toHaveBeenCalledWith("s1", { status: "verify" });
   });
 });

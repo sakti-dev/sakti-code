@@ -135,9 +135,9 @@ export function resolveOmConfig(
       omSettings.buffering?.reflectionBufferActivation ?? DEFAULT_REFLECTION_BUFFER_ACTIVATION,
   };
 
-  // Filter ON except for archive phase (status === "merged"). Skill content
+  // Filter ON except for archive phase (status === "archive"). Skill content
   // is structural instruction, not work signal — keep it out of observations.
-  const skillFilterRoot = session.status === "merged" ? undefined : getBuiltinSkillsRuntimeDir();
+  const skillFilterRoot = session.status === "archive" ? undefined : getBuiltinSkillsRuntimeDir();
 
   return {
     observeModel,

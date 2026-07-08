@@ -14,9 +14,9 @@ export function autonomousPhaseForSession(session: {
 }): AutonomousPhase | null {
   if (session.kind !== "mission") return null;
   switch (session.status) {
-    case "building":
+    case "build":
       return "build";
-    case "review":
+    case "verify":
       return "verify";
     default:
       return null;

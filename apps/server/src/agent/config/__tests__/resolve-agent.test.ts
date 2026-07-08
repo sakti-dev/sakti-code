@@ -55,23 +55,23 @@ describe("resolveSessionAgentForKind", () => {
 });
 
 describe("resolveSessionAgentForKind — status-based (SDD lifecycle)", () => {
-  it("mission + status='specifying' → build agent (spec removed; design via skill injection)", () => {
-    const { agent } = resolveSessionAgentForKind("mission", [], undefined, "specifying");
+  it("mission + status='specify' → build agent (spec removed; design via skill injection)", () => {
+    const { agent } = resolveSessionAgentForKind("mission", [], undefined, "specify");
     expect(agent.name).toBe("build");
   });
 
-  it("mission + status='building' → build agent", () => {
-    const { agent } = resolveSessionAgentForKind("mission", [], undefined, "building");
+  it("mission + status='build' → build agent", () => {
+    const { agent } = resolveSessionAgentForKind("mission", [], undefined, "build");
     expect(agent.name).toBe("build");
   });
 
-  it("mission + status='review' → verify agent (edit-denied)", () => {
-    const { agent } = resolveSessionAgentForKind("mission", [], undefined, "review");
+  it("mission + status='verify' → verify agent (edit-denied)", () => {
+    const { agent } = resolveSessionAgentForKind("mission", [], undefined, "verify");
     expect(agent.name).toBe("verify");
   });
 
-  it("mission + status='merged' → build agent (archive phase)", () => {
-    const { agent } = resolveSessionAgentForKind("mission", [], undefined, "merged");
+  it("mission + status='archive' → build agent (archive phase)", () => {
+    const { agent } = resolveSessionAgentForKind("mission", [], undefined, "archive");
     expect(agent.name).toBe("build");
   });
 
@@ -81,19 +81,19 @@ describe("resolveSessionAgentForKind — status-based (SDD lifecycle)", () => {
   });
 
   it("plan kind ignores status (always plan)", () => {
-    const { agent } = resolveSessionAgentForKind("plan", [], undefined, "specifying");
+    const { agent } = resolveSessionAgentForKind("plan", [], undefined, "specify");
     expect(agent.name).toBe("plan");
   });
 
   it("per-session override wins over status-based routing", () => {
-    const { agent } = resolveSessionAgentForKind("mission", [], "explore", "specifying");
+    const { agent } = resolveSessionAgentForKind("mission", [], "explore", "specify");
     expect(agent.name).toBe("explore");
   });
 });
 
-describe("resolveSessionAgentForKind — review routing", () => {
-  it("per-session override beats review→verify routing", () => {
-    const { agent } = resolveSessionAgentForKind("mission", [], "build", "review");
+describe("resolveSessionAgentForKind — verify routing", () => {
+  it("per-session override beats verify→verify routing", () => {
+    const { agent } = resolveSessionAgentForKind("mission", [], "build", "verify");
     expect(agent.name).toBe("build");
   });
 });

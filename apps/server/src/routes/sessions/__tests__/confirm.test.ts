@@ -3,12 +3,12 @@ import { makeApp } from "../../../__tests__/helpers.ts";
 import { confirmRoutes } from "../confirm.ts";
 
 describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", () => {
-  it("specify→build approve flips status specifying → building", async () => {
+  it("specify→build approve flips status specify → build", async () => {
     const { app, ctx } = await makeApp([confirmRoutes]);
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
-      status: "specifying",
+      status: "specify",
       pendingTransitionTo: "build",
       pendingTransitionBody: "spec summary",
     });
@@ -20,7 +20,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     });
 
     expect(res.status).toBe(200);
-    expect(ctx.repos.sessions.findById(session.id)?.status).toBe("building");
+    expect(ctx.repos.sessions.findById(session.id)?.status).toBe("build");
   });
 
   it("reject (NO) clears pending with NO status change, NO side-effect", async () => {
@@ -28,7 +28,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
-      status: "specifying",
+      status: "specify",
       pendingTransitionTo: "build",
       pendingTransitionBody: "spec summary",
     });
@@ -41,7 +41,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
 
     expect(res.status).toBe(200);
     const after = ctx.repos.sessions.findById(session.id);
-    expect(after?.status).toBe("specifying"); // unchanged
+    expect(after?.status).toBe("specify"); // unchanged
     expect(after?.pendingTransitionTo).toBeNull();
     expect(after?.pendingTransitionBody).toBeNull();
   });
@@ -51,7 +51,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
-      status: "review",
+      status: "verify",
       pendingTransitionTo: "archive",
       pendingTransitionBody: "verify clean",
     });
@@ -63,7 +63,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     });
 
     expect(res.status).toBe(200);
-    expect(ctx.repos.sessions.findById(session.id)?.status).toBe("merged");
+    expect(ctx.repos.sessions.findById(session.id)?.status).toBe("archive");
   });
 
   it("clears pendingTransition on approve", async () => {
@@ -71,7 +71,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
-      status: "specifying",
+      status: "specify",
       pendingTransitionTo: "build",
       pendingTransitionBody: "spec summary",
     });
@@ -93,7 +93,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
-      status: "specifying",
+      status: "specify",
       pendingTransitionTo: "build",
       pendingTransitionBody: "spec summary",
     });
@@ -116,7 +116,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
-      status: "specifying",
+      status: "specify",
       pendingTransitionTo: "build",
       pendingTransitionBody: "spec summary",
     });
@@ -144,7 +144,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     const project = await ctx.repos.projects.create("plan-proj", cwd);
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "plan",
-      status: "specifying",
+      status: "specify",
       pendingTransitionTo: "mission",
       pendingTransitionBody: "mission brief",
     });
@@ -160,7 +160,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     const after = ctx.repos.sessions.findById(session.id);
     expect(after?.changeName).toBe("add-feature");
     // plan→mission has no statusTarget — status unchanged.
-    expect(after?.status).toBe("specifying");
+    expect(after?.status).toBe("specify");
     // Pending cleared.
     expect(after?.pendingTransitionTo).toBeNull();
   });
@@ -170,7 +170,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     const project = await ctx.repos.projects.create("p", "/tmp/p");
     const session = await ctx.repos.sessions.create(project.id, {
       kind: "mission",
-      status: "specifying", // current phase = specify; build→verify is not legal here
+      status: "specify", // current phase = specify; build→verify is not legal here
     });
 
     const res = await app.request(`/api/sessions/${session.id}/confirm`, {

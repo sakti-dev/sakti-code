@@ -24,23 +24,16 @@ export function isBuiltinSkillName(name: string): boolean {
 }
 
 /**
- * Map a session phase (or equivalently, the DB `status` column) to the
- * builtin skill that should be force-injected at run start. Returns
- * `undefined` when no skill applies (unknown phase).
- *
- * Accepts both phase names (plan, specify, build, verify, archive) and the
- * underlying session status values (specifying, building, review, merged).
+ * Map a session phase (which now equals the DB `status` column after the
+ * status rename) to the builtin skill that should be force-injected at run
+ * start. Returns `undefined` when no skill applies (unknown phase).
  */
 const PHASE_TO_SKILL: Readonly<Record<string, BuiltinSkillName>> = {
   plan: "sakti-plan",
   specify: "sakti-specify",
-  specifying: "sakti-specify",
   build: "sakti-build",
-  building: "sakti-build",
   verify: "sakti-verify",
-  review: "sakti-verify",
   archive: "sakti-archive",
-  merged: "sakti-archive",
 };
 
 export function getBuiltinSkillForPhase(phase: string): BuiltinSkillName | undefined {
