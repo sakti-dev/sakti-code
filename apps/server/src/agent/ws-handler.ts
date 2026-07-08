@@ -7,6 +7,10 @@ import { SqliteSessionStorage } from "@sakti-code/db";
 import Type from "typebox";
 import type { ServerContext } from "../context.ts";
 import { getPermissionChannel } from "../lib/permission-channel.ts";
+import { applyTransition } from "./config/transition-apply.ts";
+import { buildForceReset } from "./config/force-reset.ts";
+import { buildGraduation } from "./config/graduation.ts";
+import { getEdge, hasEdge, phaseFromSession, type Phase } from "./config/transition-table.ts";
 import {
   abortRun,
   busyMessage,
@@ -228,75 +232,149 @@ export async function runAgentStream(
   ws: WsHandle,
 ) {
   const log = ctx.log?.server;
-  const turn = ctx.repos.turns.create(sessionId, Date.now());
-  if (storage instanceof SqliteSessionStorage) {
-    storage.setCurrentTurnId(turn.id);
+  // Defensive cap: a buggy skill could otherwise infinite-loop build⇄verify.
+  // The verify→archive gate is the natural terminator; this is a backstop.
+  const MAX_CHAIN_DEPTH = 8;
+  let currentMessage = message;
+  let depth = 0;
+
+  while (true) {
+    const turn = ctx.repos.turns.create(sessionId, Date.now());
+    if (storage instanceof SqliteSessionStorage) {
+      storage.setCurrentTurnId(turn.id);
+    }
+    // A new run supersedes any pending transition: clear the persisted pending
+    // state so a reload during this run doesn't resurface a stale card. If the
+    // agent calls `transition` again this turn, the side-effect below re-sets
+    // it. Best-effort — a clear failure must never block a run.
+    try {
+      await ctx.repos.sessions.update(sessionId, {
+        pendingTransitionTo: null,
+        pendingTransitionBody: null,
+      });
+    } catch (err) {
+      ctx.log?.server.warn?.("failed to clear pending transition on run start", {
+        sessionId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    log?.info("agent run started", {
+      sessionId,
+      turnId: turn.id,
+      messageLength: currentMessage.length ?? 0,
+    });
+    try {
+      await runPrompt(
+        ctx,
+        sessionId,
+        currentMessage,
+        storage,
+        (event) => {
+          ws.send({
+            event,
+            sessionId,
+            type: "event",
+          } satisfies EventFrame);
+          // Authoritative pending-transition persistence: record the raw {to,
+          // body} of a `transition` tool-call. The runner resolves gate/auto and
+          // either chains (auto) or leaves it pending for the confirm route.
+          // Fire-and-forget; the helper logs its own errors.
+          void persistTransitionSideEffect(ctx, sessionId, event);
+        },
+        (frame) => {
+          ws.send({
+            type: "permission.asked",
+            sessionId,
+            id: frame.id,
+            permission: frame.permission,
+            patterns: frame.patterns,
+            toolName: frame.toolName,
+            toolCallId: frame.toolCallId,
+          } satisfies PermissionAskedFrame);
+        },
+      );
+      log?.info("agent run finished", { sessionId });
+    } catch (err) {
+      log?.error("agent run failed", err, { sessionId });
+      ws.send({
+        error: err instanceof Error ? err.message : String(err),
+        sessionId,
+        type: "error",
+      } satisfies ErrorFrame);
+      return;
+    } finally {
+      ctx.repos.turns.finalize(turn.id, Date.now());
+      ctx.repos.turns.markSummary(turn.id);
+      if (storage instanceof SqliteSessionStorage) {
+        storage.setCurrentTurnId(null);
+      }
+      log?.debug("turn finalized + summary marked", { sessionId, turnId: turn.id });
+    }
+
+    // ---- Post-turn: auto-chain across auto-edges, pause at gates -----------
+    // After a run, inspect whether the agent called `transition`. AUTO edges
+    // (build→verify, verify→build) apply side-effects and immediately start the
+    // next phase's run (the <instruction> is its first message). GATE edges
+    // (specify→build, verify→archive, plan→mission) pause here — the pending
+    // transition persists for the confirm route.
+    const session = ctx.repos.sessions.findById(sessionId);
+    if (!session) return;
+    const dest = session.pendingTransitionTo;
+    if (!dest) return; // no transition — run is complete (guardrail hooks here later)
+    const from = phaseFromSession(session);
+    const destPhase = dest as Phase;
+    if (!hasEdge(from, destPhase)) {
+      // Unknown edge — clear the stale pending and stop.
+      await clearPendingTransition(ctx, sessionId);
+      return;
+    }
+    const edge = getEdge(from, destPhase);
+    if (edge.mode === "gate") return; // pause for the confirm route
+
+    // AUTO edge: apply side-effects (status flip, forced observe, graduation),
+    // clear pending, and chain into the next phase's run.
+    if (depth++ >= MAX_CHAIN_DEPTH) {
+      log?.warn?.("auto-chain depth cap reached — stopping", { sessionId, depth });
+      await clearPendingTransition(ctx, sessionId);
+      return;
+    }
+    const forceReset = edge.requiresForcedObserve ? buildForceReset(ctx, session) : undefined;
+    const graduate =
+      edge.requiresGraduation && session.kind === "plan"
+        ? buildGraduation(ctx, session)
+        : undefined;
+    try {
+      await applyTransition(
+        {
+          repos: ctx.repos,
+          ...(forceReset !== undefined ? { forceReset } : {}),
+          ...(graduate !== undefined ? { graduate } : {}),
+          ...(ctx.log !== undefined ? { log: ctx.log } : {}),
+        },
+        session,
+        edge,
+      );
+    } catch (err) {
+      log?.error?.("auto-chain: applyTransition failed — stopping", err, { sessionId });
+      await clearPendingTransition(ctx, sessionId);
+      return;
+    }
+    // The <instruction> block orients the next phase's run; the transition
+    // body (fixing plan / completion summary) is already in the transcript
+    // from the tool call.
+    currentMessage = edge.instruction;
   }
-  // A new run supersedes any pending transition: clear the persisted pending
-  // state so a reload during this run doesn't resurface a stale card. If the
-  // agent calls `transition` again this turn, the side-effect below re-sets
-  // it. Best-effort — a clear failure must never block a run.
+}
+
+/** Best-effort clear of the pending transition state. */
+async function clearPendingTransition(ctx: ServerContext, sessionId: string): Promise<void> {
   try {
     await ctx.repos.sessions.update(sessionId, {
       pendingTransitionTo: null,
       pendingTransitionBody: null,
     });
-  } catch (err) {
-    ctx.log?.server.warn?.("failed to clear pending transition on run start", {
-      sessionId,
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-  log?.info("agent run started", {
-    sessionId,
-    turnId: turn.id,
-    messageLength: message.length ?? 0,
-  });
-  try {
-    await runPrompt(
-      ctx,
-      sessionId,
-      message,
-      storage,
-      (event) => {
-        ws.send({
-          event,
-          sessionId,
-          type: "event",
-        } satisfies EventFrame);
-        // Authoritative pending-transition persistence: record the raw {to,
-        // body} of a `transition` tool-call. The runner resolves gate/auto and
-        // either chains (auto) or leaves it pending for the confirm route.
-        // Fire-and-forget; the helper logs its own errors.
-        void persistTransitionSideEffect(ctx, sessionId, event);
-      },
-      (frame) => {
-        ws.send({
-          type: "permission.asked",
-          sessionId,
-          id: frame.id,
-          permission: frame.permission,
-          patterns: frame.patterns,
-          toolName: frame.toolName,
-          toolCallId: frame.toolCallId,
-        } satisfies PermissionAskedFrame);
-      },
-    );
-    log?.info("agent run finished", { sessionId });
-  } catch (err) {
-    log?.error("agent run failed", err, { sessionId });
-    ws.send({
-      error: err instanceof Error ? err.message : String(err),
-      sessionId,
-      type: "error",
-    } satisfies ErrorFrame);
-  } finally {
-    ctx.repos.turns.finalize(turn.id, Date.now());
-    ctx.repos.turns.markSummary(turn.id);
-    if (storage instanceof SqliteSessionStorage) {
-      storage.setCurrentTurnId(null);
-    }
-    log?.debug("turn finalized + summary marked", { sessionId, turnId: turn.id });
+  } catch {
+    // Swallow — clearing is best-effort.
   }
 }
 
