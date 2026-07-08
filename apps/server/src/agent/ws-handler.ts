@@ -11,6 +11,7 @@ import { applyTransition } from "./config/transition-apply.ts";
 import { buildForceReset } from "./config/force-reset.ts";
 import { buildGraduation } from "./config/graduation.ts";
 import { getEdge, hasEdge, phaseFromSession, type Phase } from "./config/transition-table.ts";
+import { autonomousPhaseForSession, buildReminder } from "./reminder.ts";
 import {
   abortRun,
   busyMessage,
@@ -235,8 +236,12 @@ export async function runAgentStream(
   // Defensive cap: a buggy skill could otherwise infinite-loop build⇄verify.
   // The verify→archive gate is the natural terminator; this is a backstop.
   const MAX_CHAIN_DEPTH = 8;
+  // After this many consecutive stalls (no transition) in an autonomous phase,
+  // stop re-running and surface to the user instead of looping forever.
+  const MAX_REMINDERS = 2;
   let currentMessage = message;
   let depth = 0;
+  let stalls = 0;
 
   while (true) {
     const turn = ctx.repos.turns.create(sessionId, Date.now());
@@ -320,7 +325,21 @@ export async function runAgentStream(
     const session = ctx.repos.sessions.findById(sessionId);
     if (!session) return;
     const dest = session.pendingTransitionTo;
-    if (!dest) return; // no transition — run is complete (guardrail hooks here later)
+    if (!dest) {
+      // No transition — the run ended. In an autonomous phase this is a stall:
+      // inject a phase-aware <reminder> and re-run, up to a cap, so a stuck
+      // agent gets nudged (oh-my-pi style) without looping forever. Interactive
+      // phases (specify/plan) legitimately pause — no reminder.
+      const phase = autonomousPhaseForSession(session);
+      if (phase && stalls < MAX_REMINDERS) {
+        stalls++;
+        currentMessage = buildReminder(phase);
+        continue;
+      }
+      return; // interactive phase, or stall cap reached — surface to the user
+    }
+    // A transition happened — reset the stall counter for the new phase.
+    stalls = 0;
     const from = phaseFromSession(session);
     const destPhase = dest as Phase;
     if (!hasEdge(from, destPhase)) {
