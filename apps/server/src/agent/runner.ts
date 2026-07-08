@@ -41,6 +41,7 @@ import { gatherEnvironmentInfo } from "./environment.ts";
 import { NodeExecutionEnv } from "./execution-env.ts";
 import { resolveAuth } from "./model-resolver.ts";
 import { resolveOmConfig } from "./config/resolve-observational-memory.ts";
+import { resolveSessionCwd } from "./config/resolve-session-cwd.ts";
 
 /**
  * Fallback tool surface for agents that don't declare `activeToolNames`.
@@ -273,7 +274,7 @@ export async function setEditModeForSession(
     const project = ctx.repos.projects.findById(session.projectId);
     if (project) {
       const editCtx: ToolContext = {
-        cwd: project.cwd,
+        cwd: resolveSessionCwd(session, project),
         editMode: mode,
         snapshotStore: new InMemorySnapshotStore(),
         noopOwner: {},
@@ -309,9 +310,16 @@ export function runPromptEffect(
     if (!project) {
       return yield* Effect.fail(new Error(`Project not found: ${session.projectId}`));
     }
+    const cwd = resolveSessionCwd(session, project);
     ctx.log?.agent.debug("project loaded", {
       projectId: project.id,
       cwd: project.cwd,
+    });
+    ctx.log?.agent.debug("resolved cwd", {
+      sessionId,
+      projectId: project.id,
+      cwd,
+      worktreePath: session.worktreePath,
     });
 
     const auth = resolveAuth(ctx, session);
@@ -328,7 +336,7 @@ export function runPromptEffect(
 
     const thinkingLevel = resolveThinkingLevel(ctx, sessionId, session, auth.thinkingLevel);
 
-    const env = new NodeExecutionEnv(project.cwd);
+    const env = new NodeExecutionEnv(cwd);
     const sessionInstance = new PromiseSession(storage);
     const sessionShape = promiseSessionAsShape(sessionInstance);
     const getApiKeyAndHeaders = async (
@@ -341,7 +349,7 @@ export function runPromptEffect(
     // resources (skills + command templates, so harness.skill/promptFromTemplate
     // resolve) and to resolve the session agent by name without a second scan.
     const loadedContext = yield* Effect.tryPromise({
-      try: () => loadAgentContext(project.cwd),
+      try: () => loadAgentContext(cwd),
       catch: (e: unknown) => new Error(`Failed to load agent context: ${String(e)}`),
     });
 
@@ -361,7 +369,7 @@ export function runPromptEffect(
     // declare it; explore/general never see it.
     const websearchOperations = resolveWebSearchOperations(ctx.auth, ctx.settingsFile);
     const toolCtx: ToolContext = {
-      cwd: project.cwd,
+      cwd,
       editMode,
       snapshotStore: new InMemorySnapshotStore(),
       noopOwner: {},
@@ -413,7 +421,7 @@ export function runPromptEffect(
     // they're loaded by reading the SKILL.md path. The tool list passed here
     // matches what's already on the harness (agent.activeToolNames).
     const hasRead = agent.activeToolNames === undefined || agent.activeToolNames.includes("read");
-    const envBlock = formatEnvironmentBlock(gatherEnvironmentInfo(project.cwd, model.id));
+    const envBlock = formatEnvironmentBlock(gatherEnvironmentInfo(cwd, model.id));
     const composedSystemPrompt = composeSystemPrompt(
       agent.systemPrompt,
       tools,
@@ -536,7 +544,7 @@ export function runPromptEffect(
       observationalMemoryReadOnly: omReadOnly,
       skills: activeSkills,
       templates: loadedContext.commands,
-      cwd: project.cwd,
+      cwd,
       emit: eventCallback,
       registerRun: ({ harness: h, retryAbort, unsubscribe }) =>
         registerRun(sessionId, h, unsubscribe, retryAbort),
