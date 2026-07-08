@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { makeApp } from "../../../__tests__/helpers.ts";
 import { confirmRoutes } from "../confirm.ts";
+import { createMissionWorktree, linkDependencyDirs } from "../../../lib/worktree.ts";
 
 describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", () => {
   it("specify→build approve flips status specify → build", async () => {
@@ -511,6 +512,80 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
           shell: "/bin/sh",
         }).toString(),
       ).toBe("");
+    } finally {
+      delete process.env.SAKTI_AGENT_DIR;
+      rmSync(cwd, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
+
+  it("rolls back a pre-existing mission branch when graduation fails after absorb", async () => {
+    const { app, ctx } = await makeApp([confirmRoutes]);
+    const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-rollback-"));
+    const stateDir = mkdtempSync(join(tmpdir(), "sakti-state-"));
+    execSync("git init -b main", { cwd, shell: "/bin/sh" });
+    execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
+    execSync("git config user.name t", { cwd, shell: "/bin/sh" });
+    execSync("git commit --allow-empty -m init", { cwd, shell: "/bin/sh" });
+    execSync("git checkout -b sakti/add-feature", { cwd, shell: "/bin/sh" });
+    execSync("printf 'tracked-file\n' > cache-parent", { cwd, shell: "/bin/sh" });
+    execSync("printf 'branch-original\n' > branch.txt", { cwd, shell: "/bin/sh" });
+    execSync("git add cache-parent branch.txt && git commit -m branch-original", {
+      cwd,
+      shell: "/bin/sh",
+    });
+    const originalHead = execSync("git rev-parse HEAD", { cwd, shell: "/bin/sh" })
+      .toString()
+      .trim();
+    execSync("git checkout main", { cwd, shell: "/bin/sh" });
+    execSync("mkdir -p .sakti/changes/add-feature cache-parent/child", { cwd, shell: "/bin/sh" });
+    execSync("printf 'name: add-feature\n' > .sakti/changes/add-feature/.sakti.yaml", {
+      cwd,
+      shell: "/bin/sh",
+    });
+    execSync("printf '# proposal\n' > .sakti/changes/add-feature/proposal.md", {
+      cwd,
+      shell: "/bin/sh",
+    });
+    ctx.settingsFile.update({ worktree: { dependencySymlinkDirs: ["cache-parent/child"] } });
+    process.env.SAKTI_AGENT_DIR = join(stateDir, "agent");
+
+    try {
+      // Prove the failure trigger: create a real worktree and verify linkDependencyDirs throws
+      const probeWt = createMissionWorktree(cwd, "probe-project-id", "add-feature");
+      expect(() => linkDependencyDirs(cwd, probeWt, ["cache-parent/child"])).toThrow();
+      execSync(`git worktree remove --force "${probeWt}"`, {
+        cwd,
+        shell: "/bin/sh",
+        stdio: "ignore",
+      });
+
+      const project = await ctx.repos.projects.create("p", cwd);
+      const session = await ctx.repos.sessions.create(project.id, {
+        kind: "plan",
+        status: "specify",
+        pendingTransitionTo: "mission",
+        pendingTransitionBody: "brief",
+      });
+
+      const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve", to: "mission", body: "brief" }),
+      });
+
+      expect(res.status).toBe(500);
+      expect(
+        execSync("git rev-parse refs/heads/sakti/add-feature", {
+          cwd,
+          shell: "/bin/sh",
+        })
+          .toString()
+          .trim(),
+      ).toBe(originalHead);
+      const after = ctx.repos.sessions.findById(session.id);
+      expect(after?.pendingTransitionTo).toBe("mission");
+      expect(after?.worktreePath).toBeNull();
     } finally {
       delete process.env.SAKTI_AGENT_DIR;
       rmSync(cwd, { recursive: true, force: true });

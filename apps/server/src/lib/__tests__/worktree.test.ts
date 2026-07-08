@@ -20,8 +20,10 @@ import {
   detectDefaultBranch,
   linkDependencyDirs,
   missionBranchExists,
+  missionBranchHead,
   preflightWorktree,
   removeMissionWorktree,
+  resetMissionBranch,
   worktreePathFor,
 } from "../worktree.ts";
 
@@ -315,6 +317,27 @@ describe("worktree ops", () => {
       removeMissionWorktree(projectDir, wt);
       deleteMissionBranch(projectDir, "cleanup");
       expect(missionBranchExists(projectDir, "cleanup")).toBe(false);
+    });
+
+    it("missionBranchHead returns null when the mission branch is absent", () => {
+      initGitRepo(projectDir);
+      expect(missionBranchHead(projectDir, "add-feature")).toBeNull();
+    });
+
+    it("resetMissionBranch restores a pre-existing mission branch head", () => {
+      initGitRepo(projectDir);
+      execSync("git checkout -b sakti/add-feature", { cwd: projectDir, shell: "/bin/sh" });
+      writeFileSync(join(projectDir, "branch.txt"), "one\n");
+      execSync("git add branch.txt && git commit -m one", { cwd: projectDir, shell: "/bin/sh" });
+      const original = missionBranchHead(projectDir, "add-feature");
+      expect(original).not.toBeNull();
+      writeFileSync(join(projectDir, "branch.txt"), "two\n");
+      execSync("git add branch.txt && git commit -m two", { cwd: projectDir, shell: "/bin/sh" });
+      execSync("git checkout main", { cwd: projectDir, shell: "/bin/sh" });
+
+      resetMissionBranch(projectDir, "add-feature", original!);
+
+      expect(missionBranchHead(projectDir, "add-feature")).toBe(original);
     });
   });
 });

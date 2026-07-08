@@ -124,6 +124,20 @@ export function missionBranchExists(projectCwd: string, changeName: string): boo
   return branchExists(projectCwd, `sakti/${changeName}`);
 }
 
+/** Returns the current HEAD sha of `sakti/<changeName>`, or null if absent. */
+export function missionBranchHead(projectCwd: string, changeName: string): string | null {
+  try {
+    return git(projectCwd, `rev-parse refs/heads/sakti/${changeName}`);
+  } catch {
+    return null;
+  }
+}
+
+/** Force-reset `sakti/<changeName>` to the given commit (used for rollback). */
+export function resetMissionBranch(projectCwd: string, changeName: string, head: string): void {
+  git(projectCwd, `branch -f sakti/${changeName} ${shellQuote(head)}`);
+}
+
 /**
  * Delete a mission branch created during a failed graduation. Never call this
  * for branches that existed before the current graduation attempt.

@@ -17,9 +17,10 @@ import {
   createMissionWorktree,
   deleteMissionBranch,
   linkDependencyDirs,
-  missionBranchExists,
+  missionBranchHead,
   preflightWorktree,
   removeMissionWorktree,
+  resetMissionBranch,
 } from "../../lib/worktree.ts";
 import { resolveDependencySymlinkDirs } from "../../lib/worktree-settings.ts";
 import { getCtx } from "../../context.ts";
@@ -71,7 +72,7 @@ export const confirmRoutes = new Hono()
               if (guardErr) {
                 throw new Error(guardErr);
               }
-              const branchPreexisted = missionBranchExists(project.cwd, changeName);
+              const branchHeadBefore = missionBranchHead(project.cwd, changeName);
               let wtPath: string | null = null;
               try {
                 wtPath = createMissionWorktree(project.cwd, existing.projectId, changeName);
@@ -90,7 +91,9 @@ export const confirmRoutes = new Hono()
                 if (wtPath) {
                   removeMissionWorktree(project.cwd, wtPath);
                 }
-                if (!branchPreexisted) {
+                if (branchHeadBefore) {
+                  resetMissionBranch(project.cwd, changeName, branchHeadBefore);
+                } else {
                   deleteMissionBranch(project.cwd, changeName);
                 }
                 throw err;
