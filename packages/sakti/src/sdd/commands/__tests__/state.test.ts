@@ -110,7 +110,7 @@ describe("stateTransition", () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  function seed(workflow: "full" | "hotfix" | "tweak", phase: string, extra?: object): void {
+  function seed(workflow: "full" | "hotfix", phase: string, extra?: object): void {
     writeChangeMetadata(
       changeDir,
       {

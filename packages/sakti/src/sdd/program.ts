@@ -325,7 +325,7 @@ export function buildSddProgram(version: string): Command {
     .option("--description <text>", "Description to add to README.md")
     .option("--goal <text>", "Optional goal metadata to store with the change")
     .option("--schema <name>", `Workflow schema to use (default: ${DEFAULT_SCHEMA})`)
-    .option("--workflow <type>", "State machine preset: full (default), hotfix, or tweak")
+    .option("--workflow <type>", "State machine preset: full (default) or hotfix")
     .option("--json", "Output as JSON")
     // Removed options kept registered (hidden) so users get a deliberate
     // explanation instead of a generic unknown-option error.

@@ -24,7 +24,7 @@ export type InitiativeLink = z.infer<typeof InitiativeLinkSchema>;
 
 // ── State machine enums ──────────────────────────────────────────
 
-export const WorkflowSchema = z.enum(["full", "hotfix", "tweak"]);
+export const WorkflowSchema = z.enum(["full", "hotfix"]);
 export type Workflow = z.infer<typeof WorkflowSchema>;
 
 export const PhaseSchema = z.enum(["open", "design", "build", "verify", "archive"]);

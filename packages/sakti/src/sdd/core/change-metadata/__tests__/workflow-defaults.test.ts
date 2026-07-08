@@ -21,12 +21,4 @@ describe("getStateDefaultsForWorkflow", () => {
     expect(defaults.isolation).toBe("branch");
     expect(defaults.verify_mode).toBe("light");
   });
-
-  it("returns tweak defaults matching hotfix build decisions", () => {
-    const defaults = getStateDefaultsForWorkflow("tweak");
-    expect(defaults.workflow).toBe("tweak");
-    expect(defaults.build_mode).toBe("direct");
-    expect(defaults.isolation).toBe("branch");
-    expect(defaults.verify_mode).toBe("light");
-  });
 });
