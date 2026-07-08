@@ -32,6 +32,7 @@ export const sessionsRoutes = new Hono()
         parentSessionId: Type.Optional(Type.String()),
         profileId: Type.Optional(Type.Union([Type.String(), Type.Null()])),
         changeName: Type.Optional(Type.String()),
+        worktreePath: Type.Optional(Type.String()),
       }),
     ),
     async (c) => {
@@ -44,6 +45,7 @@ export const sessionsRoutes = new Hono()
         ...(body.parentSessionId === undefined ? {} : { parentSessionId: body.parentSessionId }),
         ...(body.profileId === undefined ? {} : { profileId: body.profileId }),
         ...(body.changeName === undefined ? {} : { changeName: body.changeName }),
+        ...(body.worktreePath === undefined ? {} : { worktreePath: body.worktreePath }),
       });
       return c.json(created);
     },

@@ -11,6 +11,7 @@ export interface Project {
 export interface SessionMeta {
   changeName: string | null;
   createdAt: number;
+  worktreePath: string | null;
   id: string;
   kind: "plan" | "mission";
   modelId: string | null;
