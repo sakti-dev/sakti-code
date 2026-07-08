@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync } from "node:fs";
-import { basename, join } from "node:path";
+import { cpSync, existsSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { getWorktreeBaseDir } from "./config-dirs.ts";
 
 function git(cwd: string, args: string): string {
@@ -154,4 +154,52 @@ export function absorbChangeContent(projectCwd: string, wtPath: string, changeNa
   const staged = git(wtPath, "diff --cached --name-only");
   if (staged === "") return;
   git(wtPath, `commit -m "sakti: begin change ${changeName}"`);
+}
+
+/**
+ * Remove `.sakti/changes/<change>/` from the main working tree after its
+ * content has been committed onto the mission branch. Keeps the main repo
+ * clean (the content returns to main only via merge of `sakti/<change>`).
+ * No-op when absent. Refuses tracked change dirs because removing tracked files
+ * would leave staged deletions on main; tracked change content must be handled
+ * by the user before graduation so "main stays clean" remains true.
+ */
+export function cleanMainChangeDir(projectCwd: string, changeName: string): void {
+  const dir = join(projectCwd, ".sakti", "changes", changeName);
+  if (!existsSync(dir)) {
+    return;
+  }
+  const rel = `.sakti/changes/${changeName}`;
+  const tracked = git(projectCwd, `ls-files "${rel}"`);
+  if (tracked !== "") {
+    throw new Error(
+      `Cannot clean tracked change dir "${rel}". Commit, revert, or move this change content before transitioning to mission.`,
+    );
+  }
+  rmSync(dir, { recursive: true, force: true });
+}
+
+/**
+ * Symlink configured dependency/cache dirs into the worktree so the mission can
+ * run project scripts without reinstalling. Absolute targets resolve regardless
+ * of the worktree's location. Missing main dirs and existing worktree paths are
+ * skipped. Returns the list of linked dir names.
+ */
+export function linkDependencyDirs(
+  projectCwd: string,
+  wtPath: string,
+  dirs: readonly string[],
+): string[] {
+  const linked: string[] = [];
+  for (const dir of dirs) {
+    const target = join(projectCwd, dir);
+    const link = join(wtPath, dir);
+    if (!existsSync(target) || existsSync(link)) {
+      continue;
+    }
+    mkdirSync(dirname(link), { recursive: true });
+    symlinkSync(target, link, "dir");
+    linked.push(dir);
+  }
+  return linked;
 }

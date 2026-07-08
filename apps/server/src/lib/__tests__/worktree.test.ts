@@ -1,12 +1,22 @@
 import { execSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readlinkSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import {
   absorbChangeContent,
+  cleanMainChangeDir,
   createMissionWorktree,
   detectDefaultBranch,
+  linkDependencyDirs,
   preflightWorktree,
   removeMissionWorktree,
   worktreePathFor,
@@ -149,6 +159,67 @@ describe("worktree ops", () => {
       initGitRepo(projectDir);
       const wt = createMissionWorktree(projectDir, "proj-bbbbbbbb", "nochange");
       expect(() => absorbChangeContent(projectDir, wt, "nochange")).not.toThrow();
+    });
+  });
+
+  describe("cleanMainChangeDir", () => {
+    it("removes the change dir from the main working tree", () => {
+      initGitRepo(projectDir);
+      const dir = join(projectDir, ".sakti/changes/killme");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "proposal.md"), "x");
+      cleanMainChangeDir(projectDir, "killme");
+      expect(existsSync(dir)).toBe(false);
+    });
+
+    it("is a no-op when the dir is absent", () => {
+      initGitRepo(projectDir);
+      expect(() => cleanMainChangeDir(projectDir, "absent")).not.toThrow();
+    });
+
+    it("throws instead of dirtying main when the change dir is tracked", () => {
+      initGitRepo(projectDir);
+      const dir = join(projectDir, ".sakti/changes/tracked");
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "proposal.md"), "x");
+      execSync("git add .sakti/changes/tracked/proposal.md", { cwd: projectDir, shell: "/bin/sh" });
+      execSync("git commit -m tracked-change", { cwd: projectDir, shell: "/bin/sh" });
+      expect(() => cleanMainChangeDir(projectDir, "tracked")).toThrow("tracked change dir");
+      const status = execSync("git status --porcelain", {
+        cwd: projectDir,
+        shell: "/bin/sh",
+      }).toString();
+      expect(status).toBe("");
+    });
+  });
+
+  describe("linkDependencyDirs", () => {
+    it("symlinks each configured dependency dir that exists in main", () => {
+      initGitRepo(projectDir);
+      mkdirSync(join(projectDir, "node_modules"), { recursive: true });
+      mkdirSync(join(projectDir, ".venv"), { recursive: true });
+      const wt = createMissionWorktree(projectDir, "proj-cccccccc", "dep");
+      linkDependencyDirs(projectDir, wt, ["node_modules", ".venv", "target"]);
+      expect(readlinkSync(join(wt, "node_modules"))).toBe(join(projectDir, "node_modules"));
+      expect(readlinkSync(join(wt, ".venv"))).toBe(join(projectDir, ".venv"));
+      expect(existsSync(join(wt, "target"))).toBe(false);
+    });
+
+    it("is a no-op when main has none of the configured dependency dirs", () => {
+      initGitRepo(projectDir);
+      const wt = createMissionWorktree(projectDir, "proj-dddddddd", "nodep");
+      expect(() => linkDependencyDirs(projectDir, wt, ["node_modules", ".venv"])).not.toThrow();
+      expect(existsSync(join(wt, "node_modules"))).toBe(false);
+      expect(existsSync(join(wt, ".venv"))).toBe(false);
+    });
+
+    it("does not replace an existing worktree path", () => {
+      initGitRepo(projectDir);
+      mkdirSync(join(projectDir, "target"), { recursive: true });
+      const wt = createMissionWorktree(projectDir, "proj-eeeeeeee", "existing");
+      mkdirSync(join(wt, "target"), { recursive: true });
+      linkDependencyDirs(projectDir, wt, ["target"]);
+      expect(lstatSync(join(wt, "target")).isSymbolicLink()).toBe(false);
     });
   });
 });
