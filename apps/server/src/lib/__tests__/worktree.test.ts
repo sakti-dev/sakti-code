@@ -106,6 +106,18 @@ describe("worktree ops", () => {
       expect(err).toContain("clean");
     });
 
+    it("preflightWorktree names the unexpected path and explicit stash option", () => {
+      initGitRepo(projectDir);
+      mkdirSync(join(projectDir, ".sakti/changes/add-feature"), { recursive: true });
+      writeFileSync(join(projectDir, ".sakti/changes/add-feature/proposal.md"), "# proposal\n");
+      writeFileSync(join(projectDir, "dirty.txt"), "dirty\n");
+
+      const err = preflightWorktree(projectDir, "add-feature");
+
+      expect(err).toContain('unexpected change: "dirty.txt"');
+      expect(err).toContain('preserveUnrelated: "stash"');
+    });
+
     it("returns an error when another .sakti path is dirty", () => {
       initGitRepo(projectDir);
       mkdirSync(join(projectDir, ".sakti/changes/add"), { recursive: true });

@@ -412,6 +412,9 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
       });
 
       expect(res.status).toBe(500);
+      const json = (await res.json()) as { error: string };
+      expect(json.error).toContain('unexpected change: "src/dirty.ts"');
+      expect(json.error).toContain('preserveUnrelated: "stash"');
       const after = ctx.repos.sessions.findById(session.id);
       expect(after?.pendingTransitionTo).toBe("mission");
       expect(after?.worktreePath).toBeNull();
