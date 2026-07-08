@@ -59,9 +59,11 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
 
     await actions.confirmTransition(sid, ask.to, ask.body, "approve");
 
-    // Read the changeName that the confirm route resolved + stamped on the
-    // plan session, and carry it to the new mission.
-    const changeName = server.store.sessions[sid]?.changeName ?? undefined;
+    // Read the changeName + worktreePath that the confirm route resolved +
+    // stamped on the plan session, and carry both to the new mission.
+    const planSession = server.store.sessions[sid];
+    const changeName = planSession?.changeName ?? undefined;
+    const worktreePath = planSession?.worktreePath ?? undefined;
 
     const title =
       ask.body
@@ -70,12 +72,17 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
         .find((l) => l.length > 0)
         ?.slice(0, 80) ?? undefined;
 
-    const missionSession = await actions.createSession(props.projectId, title, changeName);
+    const missionSession = await actions.createSession(
+      props.projectId,
+      title,
+      changeName,
+      worktreePath,
+    );
     if (!missionSession) return;
 
     // Carry the plan session's profile over to the mission session so the
     // user's profile pick (draft or changed mid-plan) follows the work.
-    const planProfileId = server.store.sessions[sid]?.profileId;
+    const planProfileId = planSession?.profileId;
     if (planProfileId) {
       await actions.selectProfile(missionSession.id, planProfileId);
     }

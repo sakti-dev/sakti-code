@@ -35,6 +35,7 @@ export interface Actions {
     projectId: string,
     title?: string,
     changeName?: string,
+    worktreePath?: string,
   ) => Promise<SessionMeta | undefined>;
   deleteSession: (sessionId: string) => Promise<boolean>;
   evictIntermediates: (sessionId: string, turnId: string) => void;
@@ -96,13 +97,14 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
       }
     },
 
-    async createSession(projectId, title, changeName) {
+    async createSession(projectId, title, changeName, worktreePath) {
       try {
         const res = await api.api.sessions.$post({
           json: {
             projectId,
             ...(title === undefined ? {} : { title }),
             ...(changeName === undefined ? {} : { changeName }),
+            ...(worktreePath === undefined ? {} : { worktreePath }),
           },
         });
         if (!res.ok) {

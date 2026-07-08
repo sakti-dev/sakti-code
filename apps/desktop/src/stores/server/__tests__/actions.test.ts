@@ -188,6 +188,88 @@ describe("actions", () => {
     });
   });
 
+  describe("createSession", () => {
+    it("posts worktreePath when provided", async () => {
+      const deps = makeDeps();
+      const mockApi = {
+        api: {
+          sessions: {
+            $post: vi.fn(() =>
+              okRes({
+                id: "mission-1",
+                projectId: "p1",
+                title: "Mission",
+                modelId: null,
+                profileId: null,
+                thinkingLevel: "off",
+                kind: "mission",
+                pendingTransitionBody: null,
+                parentSessionId: null,
+                changeName: "add-feature",
+                worktreePath: "/tmp/sakti/projects/app--add-feature",
+                pendingTransitionTo: null,
+                status: "specify",
+                createdAt: 1,
+                updatedAt: 1,
+              }),
+            ),
+          },
+        },
+      };
+      const actions = createActions(mockApi as never, makeMockWs(), deps);
+
+      await actions.createSession(
+        "p1",
+        "Mission",
+        "add-feature",
+        "/tmp/sakti/projects/app--add-feature",
+      );
+
+      expect(mockApi.api.sessions.$post).toHaveBeenCalledWith({
+        json: {
+          projectId: "p1",
+          title: "Mission",
+          changeName: "add-feature",
+          worktreePath: "/tmp/sakti/projects/app--add-feature",
+        },
+      });
+    });
+
+    it("omits worktreePath when not provided", async () => {
+      const deps = makeDeps();
+      const mockApi = {
+        api: {
+          sessions: {
+            $post: vi.fn(() =>
+              okRes({
+                id: "mission-1",
+                projectId: "p1",
+                title: null,
+                modelId: null,
+                profileId: null,
+                thinkingLevel: "off",
+                kind: "mission",
+                pendingTransitionBody: null,
+                parentSessionId: null,
+                changeName: null,
+                worktreePath: null,
+                pendingTransitionTo: null,
+                status: "specify",
+                createdAt: 1,
+                updatedAt: 1,
+              }),
+            ),
+          },
+        },
+      };
+      const actions = createActions(mockApi as never, makeMockWs(), deps);
+
+      await actions.createSession("p1");
+
+      expect(mockApi.api.sessions.$post).toHaveBeenCalledWith({ json: { projectId: "p1" } });
+    });
+  });
+
   describe("selectProfile", () => {
     it("PATCHes session profileId on server", async () => {
       const deps = makeDeps();

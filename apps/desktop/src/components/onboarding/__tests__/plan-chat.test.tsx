@@ -1,4 +1,4 @@
-import { render, screen } from "@solidjs/testing-library";
+import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
@@ -16,6 +16,11 @@ const mocks = vi.hoisted(() => ({
   getDraft: vi.fn<(projectId: string) => string | undefined>(() => undefined),
   clearDraft: vi.fn(),
   onSend: null as null | ((t: string) => void | Promise<void>),
+  pendingTransition: null as null | { to: string; body: string },
+  sessionMeta: {} as Record<
+    string,
+    { profileId: string | null; changeName: string | null; worktreePath: string | null }
+  >,
 }));
 
 vi.mock("~/stores/store-context", () => ({
@@ -33,14 +38,14 @@ vi.mock("~/stores/store-context", () => ({
         store: {
           streaming: { phase: "idle" },
           turns: [],
-          pendingTransition: null,
+          pendingTransition: mocks.pendingTransition,
         },
         actions: { clearPendingTransition: mocks.clearPendingTransition },
       }),
     },
     server: {
       store: {
-        sessions: {} as Record<string, { profileId: string | null; changeName: string | null }>,
+        sessions: mocks.sessionMeta,
       },
     },
   }),
@@ -72,6 +77,8 @@ describe("PlanChat", () => {
     vi.clearAllMocks();
     mocks.getDraft.mockImplementation(() => undefined);
     mocks.onSend = null;
+    mocks.pendingTransition = null;
+    mocks.sessionMeta = {};
   });
 
   it("loads chat on mount", () => {
@@ -105,5 +112,34 @@ describe("PlanChat", () => {
     await mocks.onSend!("hello");
     expect(mocks.selectProfile).not.toHaveBeenCalled();
     expect(mocks.clearDraft).not.toHaveBeenCalled();
+  });
+
+  it("carries worktreePath from the confirmed plan session to the new mission", async () => {
+    mocks.pendingTransition = { to: "mission", body: "Build the thing\n\nDetails" };
+    mocks.sessionMeta.s1 = {
+      profileId: null,
+      changeName: "add-feature",
+      worktreePath: "/tmp/sakti/projects/app--add-feature",
+    };
+
+    render(() => <PlanChat projectId="p1" sessionId="s1" />);
+
+    const create = await screen.findByRole("button", { name: "Create" });
+    fireEvent.click(create);
+
+    await waitFor(() => {
+      expect(mocks.confirmTransition).toHaveBeenCalledWith(
+        "s1",
+        "mission",
+        "Build the thing\n\nDetails",
+        "approve",
+      );
+      expect(mocks.createSession).toHaveBeenCalledWith(
+        "p1",
+        "Build the thing",
+        "add-feature",
+        "/tmp/sakti/projects/app--add-feature",
+      );
+    });
   });
 });
