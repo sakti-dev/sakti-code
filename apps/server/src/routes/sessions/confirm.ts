@@ -77,5 +77,9 @@ export const confirmRoutes = new Hono()
       pendingTransitionTo: null,
       pendingTransitionBody: null,
     });
-    return c.json(ctx.repos.sessions.findById(id) ?? existing);
+    const updated = ctx.repos.sessions.findById(id) ?? existing;
+    if (action === "approve") {
+      return c.json({ ...updated, instruction: edge.instruction });
+    }
+    return c.json(updated);
   });

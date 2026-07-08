@@ -25,12 +25,15 @@ export function MissionChatView(props: MissionChatViewProps): JSX.Element {
     if (!ask) {
       return;
     }
-    // Only clear the card once the server confirms — on failure, leave it so
-    // the user can retry. (The server is the source of truth; it clears the
-    // persisted pending ask on both approve and reject.)
-    const ok = await actions.confirmTransition(props.sessionId, ask.to, ask.body, askAction);
-    if (ok) {
+    const result = await actions.confirmTransition(props.sessionId, ask.to, ask.body, askAction);
+    if (result.ok) {
       sessionStore()?.actions.clearPendingTransition();
+      // Auto-start the next phase: the server flipped the status and returned
+      // the <instruction> block. Send it as a WS prompt so the next-phase
+      // agent runs immediately (no manual user message needed).
+      if (result.instruction) {
+        actions.sendPrompt(props.sessionId, result.instruction);
+      }
     }
   };
 

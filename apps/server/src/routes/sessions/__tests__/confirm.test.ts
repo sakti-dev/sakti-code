@@ -88,6 +88,50 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     expect(after?.pendingTransitionBody).toBeNull();
   });
 
+  it("approve returns the edge instruction for auto-start", async () => {
+    const { app, ctx } = await makeApp([confirmRoutes]);
+    const project = await ctx.repos.projects.create("p", "/tmp/p");
+    const session = await ctx.repos.sessions.create(project.id, {
+      kind: "mission",
+      status: "specifying",
+      pendingTransitionTo: "build",
+      pendingTransitionBody: "spec summary",
+    });
+
+    const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve", to: "build", body: "spec summary" }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { instruction?: string };
+    expect(json.instruction).toBeDefined();
+    expect(json.instruction).toContain("<instruction>");
+    expect(json.instruction).toContain("build mode");
+  });
+
+  it("reject does NOT return an instruction", async () => {
+    const { app, ctx } = await makeApp([confirmRoutes]);
+    const project = await ctx.repos.projects.create("p", "/tmp/p");
+    const session = await ctx.repos.sessions.create(project.id, {
+      kind: "mission",
+      status: "specifying",
+      pendingTransitionTo: "build",
+      pendingTransitionBody: "spec summary",
+    });
+
+    const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "reject", to: "build", body: "needs work" }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { instruction?: string };
+    expect(json.instruction).toBeUndefined();
+  });
+
   it("returns 400 for a `to` that is not a valid edge from the current phase", async () => {
     const { app, ctx } = await makeApp([confirmRoutes]);
     const project = await ctx.repos.projects.create("p", "/tmp/p");

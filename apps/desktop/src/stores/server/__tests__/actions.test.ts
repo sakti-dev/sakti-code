@@ -381,8 +381,9 @@ describe("actions", () => {
       };
       const actions = createActions(mockApi as never, makeMockWs(), deps);
 
-      await actions.confirmTransition("s1", "build", "the spec body", "approve");
+      const result = await actions.confirmTransition("s1", "build", "the spec body", "approve");
 
+      expect(result.ok).toBe(true);
       expect(mockApi.api.sessions[":id"].confirm.$post).toHaveBeenCalledWith({
         param: { id: "s1" },
         json: { action: "approve", to: "build", body: "the spec body" },
@@ -421,8 +422,9 @@ describe("actions", () => {
       };
       const actions = createActions(mockApi as never, makeMockWs(), deps);
 
-      await actions.confirmTransition("s1", "build", "body", "approve");
+      const result = await actions.confirmTransition("s1", "build", "body", "approve");
 
+      expect(result.ok).toBe(false);
       expect(deps.serverStore.store.sessions.s1?.status).toBe("specifying");
     });
 

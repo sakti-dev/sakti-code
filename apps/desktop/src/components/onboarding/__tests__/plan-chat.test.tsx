@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 const mocks = vi.hoisted(() => ({
   loadChat: vi.fn(),
   clearPendingTransition: vi.fn(),
-  confirmTransition: vi.fn(async () => true),
+  confirmTransition: vi.fn(async () => ({ ok: true, instruction: null })),
   createSession: vi.fn(async () => ({ id: "mission-1" })),
   createChildPlan: vi.fn(async () => ({ id: "plan-1" })),
   sendPrompt: vi.fn(),

@@ -30,7 +30,7 @@ export interface Actions {
     to: string,
     body: string,
     action: "approve" | "reject",
-  ) => Promise<boolean>;
+  ) => Promise<{ ok: boolean; instruction: string | null }>;
   createSession: (
     projectId: string,
     title?: string,
@@ -267,9 +267,9 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
         });
         if (!res.ok) {
           setLastError(`Failed to ${action} (${res.status})`);
-          return false;
+          return { ok: false, instruction: null };
         }
-        const updated = (await res.json()) as SessionMeta;
+        const updated = (await res.json()) as SessionMeta & { instruction?: string };
         // Mirror the server: status advanced + pending transition cleared.
         server.actions.updateSession(sessionId, {
           status: updated.status,
@@ -277,10 +277,13 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
           pendingTransitionTo: null,
           pendingTransitionBody: null,
         });
-        return true;
+        return {
+          ok: true,
+          instruction: updated.instruction ?? null,
+        };
       } catch (error) {
         setLastError(error instanceof Error ? error.message : "Failed to confirm transition");
-        return false;
+        return { ok: false, instruction: null };
       }
     },
 
