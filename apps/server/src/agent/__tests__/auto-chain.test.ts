@@ -234,4 +234,52 @@ describe("runAgentStream auto-chain across auto-edges", () => {
       spy.mockRestore();
     }
   });
+
+  it("depth cap stops the auto-chain after MAX_CHAIN_DEPTH iterations", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("depth", "/tmp/depth");
+    const session = await ctx.repos.sessions.create(project.id, { status: "building" });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    let calls = 0;
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    // Every run toggles between build→verify and verify→build, creating an
+    // infinite auto-chain that only the depth cap can stop.
+    spy.mockImplementation(async (ctx2: unknown, sid: string) => {
+      calls++;
+      const c = ctx2 as {
+        repos: {
+          sessions: {
+            update: (id: string, d: object) => Promise<unknown>;
+            findById: (id: string) => { status: string };
+          };
+        };
+      };
+      const currentStatus = c.repos.sessions.findById(sid).status;
+      if (currentStatus === "building") {
+        await c.repos.sessions.update(sid, {
+          pendingTransitionTo: "verify",
+          pendingTransitionBody: "done",
+        });
+      } else {
+        await c.repos.sessions.update(sid, {
+          pendingTransitionTo: "build",
+          pendingTransitionBody: "fix it",
+        });
+      }
+    });
+
+    try {
+      await runAgentStream(ctx, session.id, "go", storage, { send: () => {} });
+      // MAX_CHAIN_DEPTH is 8; the initial run + 8 chained runs = 9 max.
+      // The key assertion: it stopped (didn't infinite-loop).
+      expect(calls).toBeLessThanOrEqual(10);
+      expect(calls).toBeGreaterThanOrEqual(2);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });

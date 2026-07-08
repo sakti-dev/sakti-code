@@ -132,6 +132,39 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     expect(json.instruction).toBeUndefined();
   });
 
+  it("plan→mission approve stamps changeName from the changes dir", async () => {
+    const { app, ctx } = await makeApp([confirmRoutes]);
+    // Create a real temp cwd with a .sakti/changes/<name> dir so the
+    // resolver can find it.
+    const cwd = `/tmp/plan-mission-test-${Date.now()}`;
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    mkdirSync(`${cwd}/.sakti/changes/add-feature`, { recursive: true });
+    writeFileSync(`${cwd}/.sakti/changes/add-feature/.sakti.yaml`, "name: add-feature\n");
+
+    const project = await ctx.repos.projects.create("plan-proj", cwd);
+    const session = await ctx.repos.sessions.create(project.id, {
+      kind: "plan",
+      status: "specifying",
+      pendingTransitionTo: "mission",
+      pendingTransitionBody: "mission brief",
+    });
+
+    const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve", to: "mission", body: "mission brief" }),
+    });
+
+    expect(res.status).toBe(200);
+    // changeName should be stamped on the plan session.
+    const after = ctx.repos.sessions.findById(session.id);
+    expect(after?.changeName).toBe("add-feature");
+    // plan→mission has no statusTarget — status unchanged.
+    expect(after?.status).toBe("specifying");
+    // Pending cleared.
+    expect(after?.pendingTransitionTo).toBeNull();
+  });
+
   it("returns 400 for a `to` that is not a valid edge from the current phase", async () => {
     const { app, ctx } = await makeApp([confirmRoutes]);
     const project = await ctx.repos.projects.create("p", "/tmp/p");
