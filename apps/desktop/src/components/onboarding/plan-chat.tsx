@@ -57,7 +57,10 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
       return;
     }
 
-    await actions.confirmTransition(sid, ask.to, ask.body, "approve");
+    const result = await actions.confirmTransition(sid, ask.to, ask.body, "approve");
+    if (!result.ok) {
+      return;
+    }
 
     // Read the changeName + worktreePath that the confirm route resolved +
     // stamped on the plan session, and carry both to the new mission.

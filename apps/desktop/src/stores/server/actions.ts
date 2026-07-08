@@ -276,6 +276,7 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
         server.actions.updateSession(sessionId, {
           status: updated.status,
           ...(updated.changeName !== undefined ? { changeName: updated.changeName } : {}),
+          ...(updated.worktreePath !== undefined ? { worktreePath: updated.worktreePath } : {}),
           pendingTransitionTo: null,
           pendingTransitionBody: null,
         });

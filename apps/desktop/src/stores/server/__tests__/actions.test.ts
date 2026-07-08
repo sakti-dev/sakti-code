@@ -515,7 +515,7 @@ describe("actions", () => {
       expect(deps.serverStore.store.sessions.s1?.status).toBe("specify");
     });
 
-    it("mirrors changeName from the confirm response", async () => {
+    it("mirrors changeName and worktreePath from the confirm response", async () => {
       const deps = makeDeps();
       deps.serverStore.actions.addSession({
         id: "s1",
@@ -551,7 +551,7 @@ describe("actions", () => {
                     pendingTransitionBody: null,
                     parentSessionId: null,
                     changeName: "add-feature-x",
-                    worktreePath: null,
+                    worktreePath: "/tmp/sakti/projects/app--add-feature",
                     pendingTransitionTo: null,
                     status: "specify",
                     createdAt: 1,
@@ -568,6 +568,9 @@ describe("actions", () => {
       await actions.confirmTransition("s1", "mission", "brief", "approve");
 
       expect(deps.serverStore.store.sessions.s1?.changeName).toBe("add-feature-x");
+      expect(deps.serverStore.store.sessions.s1?.worktreePath).toBe(
+        "/tmp/sakti/projects/app--add-feature",
+      );
     });
   });
 

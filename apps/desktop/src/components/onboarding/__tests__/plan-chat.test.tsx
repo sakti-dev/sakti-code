@@ -142,4 +142,25 @@ describe("PlanChat", () => {
       );
     });
   });
+
+  it("does not create a mission when confirmTransition fails", async () => {
+    mocks.pendingTransition = { to: "mission", body: "Build the thing" };
+    mocks.confirmTransition.mockResolvedValueOnce({ ok: false, instruction: null });
+    render(() => <PlanChat projectId="p1" sessionId="s1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    await waitFor(() => {
+      expect(mocks.confirmTransition).toHaveBeenCalledWith(
+        "s1",
+        "mission",
+        "Build the thing",
+        "approve",
+      );
+    });
+    expect(mocks.createSession).not.toHaveBeenCalled();
+    expect(mocks.clearPendingTransition).not.toHaveBeenCalled();
+    expect(mocks.openSessionTab).not.toHaveBeenCalled();
+    expect(mocks.sendPrompt).not.toHaveBeenCalled();
+  });
 });
