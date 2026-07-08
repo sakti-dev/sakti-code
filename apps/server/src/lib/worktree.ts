@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync } from "node:fs";
 import { basename, join } from "node:path";
 import { getWorktreeBaseDir } from "./config-dirs.ts";
 
@@ -134,4 +134,24 @@ export function removeMissionWorktree(projectCwd: string, wtPath: string): void 
   } catch {
     // Best-effort; the worktree may already be gone.
   }
+}
+
+/**
+ * Copy the main repo's uncommitted `.sakti/changes/<change>/` into the
+ * worktree and commit it on the mission branch as the first commit. The
+ * specify agent then reads proposal.md from the worktree and writes
+ * design.md/tasks.md as further commits. Idempotent-ish: a no-op (no throw)
+ * when main has no change dir or when the same content is already committed on
+ * a reused mission branch.
+ */
+export function absorbChangeContent(projectCwd: string, wtPath: string, changeName: string): void {
+  const src = join(projectCwd, ".sakti", "changes", changeName);
+  if (!existsSync(src)) return;
+  const dest = join(wtPath, ".sakti", "changes", changeName);
+  mkdirSync(dest, { recursive: true });
+  cpSync(src, dest, { recursive: true });
+  git(wtPath, "add .sakti/changes");
+  const staged = git(wtPath, "diff --cached --name-only");
+  if (staged === "") return;
+  git(wtPath, `commit -m "sakti: begin change ${changeName}"`);
 }

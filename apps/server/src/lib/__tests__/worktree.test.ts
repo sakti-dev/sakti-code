@@ -1,9 +1,10 @@
 import { execSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import {
+  absorbChangeContent,
   createMissionWorktree,
   detectDefaultBranch,
   preflightWorktree,
@@ -124,6 +125,30 @@ describe("worktree ops", () => {
       const wt2 = createMissionWorktree(projectDir, "proj-test001", "recycle");
       expect(existsSync(wt2)).toBe(true);
       expect(wt2).toBe(wt);
+    });
+  });
+
+  describe("absorbChangeContent", () => {
+    it("copies .sakti/changes/<change>/ into the worktree and commits it on the branch", () => {
+      initGitRepo(projectDir);
+      // Main repo has an uncommitted change dir.
+      mkdirSync(join(projectDir, ".sakti/changes/add-feature"), { recursive: true });
+      writeFileSync(join(projectDir, ".sakti/changes/add-feature/proposal.md"), "# proposal");
+      // Create the worktree (base checkout, no change dir).
+      const wt = createMissionWorktree(projectDir, "proj-aaaaaaaa", "add-feature");
+      absorbChangeContent(projectDir, wt, "add-feature");
+      // The change dir now exists in the worktree AND is committed on sakti/add-feature.
+      expect(existsSync(join(wt, ".sakti/changes/add-feature/proposal.md"))).toBe(true);
+      const committed = execSync(`git -C "${wt}" show --stat --oneline HEAD`, {
+        shell: "/bin/sh",
+      }).toString();
+      expect(committed).toContain(".sakti/changes/add-feature/proposal.md");
+    });
+
+    it("is a no-op when main has no change dir", () => {
+      initGitRepo(projectDir);
+      const wt = createMissionWorktree(projectDir, "proj-bbbbbbbb", "nochange");
+      expect(() => absorbChangeContent(projectDir, wt, "nochange")).not.toThrow();
     });
   });
 });
