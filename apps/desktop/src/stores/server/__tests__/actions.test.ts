@@ -425,6 +425,59 @@ describe("actions", () => {
 
       expect(deps.serverStore.store.sessions.s1?.status).toBe("specifying");
     });
+
+    it("mirrors changeName from the confirm response", async () => {
+      const deps = makeDeps();
+      deps.serverStore.actions.addSession({
+        id: "s1",
+        projectId: "p1",
+        title: null,
+        modelId: null,
+        profileId: null,
+        thinkingLevel: "off",
+        kind: "plan",
+        pendingTransitionBody: "brief",
+        parentSessionId: null,
+        changeName: null,
+        pendingTransitionTo: "mission",
+        status: "specifying",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const mockApi = {
+        api: {
+          sessions: {
+            ":id": {
+              confirm: {
+                $post: vi.fn(() =>
+                  okRes({
+                    id: "s1",
+                    projectId: "p1",
+                    title: null,
+                    modelId: null,
+                    profileId: null,
+                    thinkingLevel: "off",
+                    kind: "plan",
+                    pendingTransitionBody: null,
+                    parentSessionId: null,
+                    changeName: "add-feature-x",
+                    pendingTransitionTo: null,
+                    status: "specifying",
+                    createdAt: 1,
+                    updatedAt: 2,
+                  }),
+                ),
+              },
+            },
+          },
+        },
+      };
+      const actions = createActions(mockApi as never, makeMockWs(), deps);
+
+      await actions.confirmTransition("s1", "mission", "brief", "approve");
+
+      expect(deps.serverStore.store.sessions.s1?.changeName).toBe("add-feature-x");
+    });
   });
 
   describe("renameSession", () => {

@@ -38,7 +38,11 @@ vi.mock("~/stores/store-context", () => ({
         actions: { clearPendingTransition: mocks.clearPendingTransition },
       }),
     },
-    server: { store: { sessions: {} as Record<string, { profileId: string | null }> } },
+    server: {
+      store: {
+        sessions: {} as Record<string, { profileId: string | null; changeName: string | null }>,
+      },
+    },
   }),
 }));
 

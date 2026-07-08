@@ -59,6 +59,10 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
 
     await actions.confirmTransition(sid, ask.to, ask.body, "approve");
 
+    // Read the changeName that the confirm route resolved + stamped on the
+    // plan session, and carry it to the new mission.
+    const changeName = server.store.sessions[sid]?.changeName ?? undefined;
+
     const title =
       ask.body
         .split("\n")
@@ -66,7 +70,7 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
         .find((l) => l.length > 0)
         ?.slice(0, 80) ?? undefined;
 
-    const missionSession = await actions.createSession(props.projectId, title);
+    const missionSession = await actions.createSession(props.projectId, title, changeName);
     if (!missionSession) return;
 
     // Carry the plan session's profile over to the mission session so the

@@ -31,7 +31,11 @@ export interface Actions {
     body: string,
     action: "approve" | "reject",
   ) => Promise<boolean>;
-  createSession: (projectId: string, title?: string) => Promise<SessionMeta | undefined>;
+  createSession: (
+    projectId: string,
+    title?: string,
+    changeName?: string,
+  ) => Promise<SessionMeta | undefined>;
   deleteSession: (sessionId: string) => Promise<boolean>;
   evictIntermediates: (sessionId: string, turnId: string) => void;
   followUpRun: (sessionId: string, text: string) => void;
@@ -92,12 +96,13 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
       }
     },
 
-    async createSession(projectId, title) {
+    async createSession(projectId, title, changeName) {
       try {
         const res = await api.api.sessions.$post({
           json: {
             projectId,
             ...(title === undefined ? {} : { title }),
+            ...(changeName === undefined ? {} : { changeName }),
           },
         });
         if (!res.ok) {
@@ -268,6 +273,7 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
         // Mirror the server: status advanced + pending transition cleared.
         server.actions.updateSession(sessionId, {
           status: updated.status,
+          ...(updated.changeName !== undefined ? { changeName: updated.changeName } : {}),
           pendingTransitionTo: null,
           pendingTransitionBody: null,
         });

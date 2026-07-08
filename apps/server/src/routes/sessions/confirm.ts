@@ -10,6 +10,7 @@ import {
   phaseFromSession,
   type Phase,
 } from "../../agent/config/transition-table.ts";
+import { resolveActiveChangeName } from "../../agent/config/resolve-change-name.ts";
 import { getCtx } from "../../context.ts";
 
 const confirmBody = Type.Object({
@@ -59,6 +60,17 @@ export const confirmRoutes = new Hono()
         existing,
         edge,
       );
+      // plan→mission: resolve the active change name and stamp it on the
+      // plan session so the client can carry it to the new mission.
+      if (edge.from === "plan" && edge.to === "mission") {
+        const project = ctx.repos.projects.findById(existing.projectId);
+        if (project) {
+          const changeName = resolveActiveChangeName(project.cwd);
+          if (changeName) {
+            await ctx.repos.sessions.update(id, { changeName });
+          }
+        }
+      }
     }
     // reject (NO): dismiss only — no status change, no side-effect.
     await ctx.repos.sessions.update(id, {
