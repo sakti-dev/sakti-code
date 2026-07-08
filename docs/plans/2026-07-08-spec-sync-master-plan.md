@@ -21,7 +21,7 @@
 - [x] `@sakti-code/llm` — 2 capability specs (2026-07-08)
 - [x] `@sakti-code/agent` — 7 capability specs (3 updated + 4 new, 2026-07-08)
 - [x] `apps/server` — 4 capability specs (1 rewritten + 3 new, 2026-07-08)
-- [ ] `apps/desktop` — 3 capability specs (update existing + new)
+- [x] `apps/desktop` — 7 capability specs (1 updated + 6 new, 2026-07-08)
 
 ---
 
@@ -276,13 +276,17 @@ After writing/updating all specs for a package:
 
 **Capabilities to spec:**
 
-| Capability           | Spec path                                     | Existing spec | Notes                                                    |
-| -------------------- | --------------------------------------------- | ------------- | -------------------------------------------------------- |
-| desktop-electron-app | `openspec/specs/desktop-electron-app/spec.md` | Yes           | Electron shell, main process                             |
-| desktop-preload      | `openspec/specs/desktop-preload/spec.md`      | New           | Preload script, contextBridge                            |
-| desktop-renderer     | `openspec/specs/desktop-renderer/spec.md`     | New           | SolidJS renderer app (this is large — may need sub-caps) |
+| Capability                    | Spec path                                              | Existing spec | Notes                                           |
+| ----------------------------- | ------------------------------------------------------ | ------------- | ----------------------------------------------- |
+| desktop-electron-app          | `openspec/specs/desktop-electron-app/spec.md`          | Yes           | Electron shell, main process, IPC, build        |
+| desktop-preload               | `openspec/specs/desktop-preload/spec.md`               | New           | Preload script, contextBridge, IPC channels     |
+| desktop-renderer-app          | `openspec/specs/desktop-renderer-app/spec.md`          | New           | SolidJS app shell, ThemeProvider, StoreProvider |
+| desktop-renderer-stores       | `openspec/specs/desktop-renderer-stores/spec.md`       | New           | Store architecture, registries, workspace tabs  |
+| desktop-renderer-connectivity | `openspec/specs/desktop-renderer-connectivity/spec.md` | New           | API client, WsClient, Actions facade            |
+| desktop-renderer-chat         | `openspec/specs/desktop-renderer-chat/spec.md`         | New           | Chat area, timeline, input, event handlers      |
+| desktop-renderer-ui           | `openspec/specs/desktop-renderer-ui/spec.md`           | New           | Layout, views, banners, settings                |
 
-**Existing specs:** `desktop-electron-app` exists. The SolidJS renderer is likely too large for a single spec — break it into UI domains (sessions, settings, terminal, workspace, etc.).
+**Existing specs:** `desktop-electron-app` exists (updated). The SolidJS renderer is split into 5 sub-specs by domain.
 
 ---
 
