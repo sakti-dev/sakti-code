@@ -42,10 +42,10 @@ export default function Sidebar(): JSX.Element {
       .sort((a, b) => b.updatedAt - a.updatedAt);
   });
 
-  const activeMissions = createMemo(() => missions().filter((m) => m.status !== "merged"));
+  const activeMissions = createMemo(() => missions().filter((m) => m.status !== "done"));
   const archivedMissions = createMemo<ArchivedMission[]>(() =>
     missions()
-      .filter((m) => m.status === "merged")
+      .filter((m) => m.status === "done")
       .map((m) => ({
         id: m.id,
         title: m.title,

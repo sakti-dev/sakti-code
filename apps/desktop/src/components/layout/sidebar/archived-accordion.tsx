@@ -42,7 +42,7 @@ export function ArchivedAccordion(props: ArchivedAccordionProps): JSX.Element {
           {(m) => (
             <MissionRow
               isActive={props.activeId === m.id}
-              status={"merged" as MissionStatus}
+              status={"done" as MissionStatus}
               streamPhase={m.streamPhase}
               title={m.title}
               updatedAt={m.updatedAt}

@@ -203,7 +203,7 @@ describe("actions", () => {
         parentSessionId: null,
         changeName: null,
         pendingTransitionTo: null,
-        status: "building",
+        status: "build",
         createdAt: 1,
         updatedAt: 1,
       });
@@ -224,7 +224,7 @@ describe("actions", () => {
                   parentSessionId: null,
                   changeName: null,
                   pendingTransitionTo: null,
-                  status: "building",
+                  status: "build",
                   createdAt: 1,
                   updatedAt: 1,
                 }),
@@ -347,7 +347,7 @@ describe("actions", () => {
         parentSessionId: null,
         changeName: null,
         pendingTransitionTo: null,
-        status: "specifying",
+        status: "specify",
         createdAt: 1,
         updatedAt: 1,
       });
@@ -369,7 +369,7 @@ describe("actions", () => {
                     parentSessionId: null,
                     changeName: null,
                     pendingTransitionTo: null,
-                    status: "building",
+                    status: "build",
                     createdAt: 1,
                     updatedAt: 2,
                   }),
@@ -388,7 +388,7 @@ describe("actions", () => {
         param: { id: "s1" },
         json: { action: "approve", to: "build", body: "the spec body" },
       });
-      expect(deps.serverStore.store.sessions.s1?.status).toBe("building");
+      expect(deps.serverStore.store.sessions.s1?.status).toBe("build");
     });
 
     it("does nothing when the server responds not ok", async () => {
@@ -405,7 +405,7 @@ describe("actions", () => {
         parentSessionId: null,
         changeName: null,
         pendingTransitionTo: null,
-        status: "specifying",
+        status: "specify",
         createdAt: 1,
         updatedAt: 1,
       });
@@ -425,7 +425,7 @@ describe("actions", () => {
       const result = await actions.confirmTransition("s1", "build", "body", "approve");
 
       expect(result.ok).toBe(false);
-      expect(deps.serverStore.store.sessions.s1?.status).toBe("specifying");
+      expect(deps.serverStore.store.sessions.s1?.status).toBe("specify");
     });
 
     it("mirrors changeName from the confirm response", async () => {
@@ -442,7 +442,7 @@ describe("actions", () => {
         parentSessionId: null,
         changeName: null,
         pendingTransitionTo: "mission",
-        status: "specifying",
+        status: "specify",
         createdAt: 1,
         updatedAt: 1,
       });
@@ -464,7 +464,7 @@ describe("actions", () => {
                     parentSessionId: null,
                     changeName: "add-feature-x",
                     pendingTransitionTo: null,
-                    status: "specifying",
+                    status: "specify",
                     createdAt: 1,
                     updatedAt: 2,
                   }),
@@ -497,7 +497,7 @@ describe("actions", () => {
         parentSessionId: null,
         changeName: null,
         pendingTransitionTo: null,
-        status: "specifying",
+        status: "specify",
         createdAt: 1,
         updatedAt: 1,
       });
@@ -518,7 +518,7 @@ describe("actions", () => {
                   parentSessionId: null,
                   changeName: null,
                   pendingTransitionTo: null,
-                  status: "specifying",
+                  status: "specify",
                   createdAt: 1,
                   updatedAt: 2,
                 }),
@@ -555,7 +555,7 @@ describe("actions", () => {
         parentSessionId: null,
         changeName: null,
         pendingTransitionTo: null,
-        status: "specifying",
+        status: "specify",
         createdAt: 1,
         updatedAt: 1,
       });

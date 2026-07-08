@@ -11,17 +11,19 @@ export type MissionStatus = SessionMeta["status"];
 export type StreamPhase = "idle" | "thinking" | "writing" | "tool_running" | "error";
 
 const STATUS_CLASS: Record<MissionStatus, string> = {
-  specifying: "bg-muted text-muted-foreground",
-  building: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  review: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  merged: "bg-green-500/10 text-green-600 dark:text-green-400",
+  specify: "bg-muted text-muted-foreground",
+  build: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  verify: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  archive: "bg-green-500/10 text-green-600 dark:text-green-400",
+  done: "bg-muted text-muted-foreground",
 };
 
 const STATUS_LABEL: Record<MissionStatus, string> = {
-  specifying: "specifying",
-  building: "building",
-  review: "review",
-  merged: "merged",
+  specify: "specify",
+  build: "build",
+  verify: "verify",
+  archive: "archive",
+  done: "done",
 };
 
 function dotClass(phase: StreamPhase): string {

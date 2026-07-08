@@ -4,7 +4,7 @@ import { MissionRow } from "../mission-row.tsx";
 
 const baseProps = {
   isActive: false,
-  status: "building" as const,
+  status: "build" as const,
   streamPhase: "idle" as const,
   title: "My Mission",
   updatedAt: Date.now(),
@@ -15,7 +15,7 @@ describe("MissionRow", () => {
   it("renders the title and status pill", () => {
     render(() => <MissionRow {...baseProps} />);
     expect(screen.getByText("My Mission")).toBeTruthy();
-    expect(screen.getByText("building")).toBeTruthy();
+    expect(screen.getByText("build")).toBeTruthy();
   });
 
   it("shows 'Untitled mission' when title is null", () => {

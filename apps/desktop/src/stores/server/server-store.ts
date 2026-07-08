@@ -19,7 +19,7 @@ export interface SessionMeta {
   pendingTransitionTo: string | null;
   profileId: string | null;
   projectId: string;
-  status: "specifying" | "building" | "review" | "merged";
+  status: "specify" | "build" | "verify" | "archive" | "done";
   thinkingLevel: string;
   title: string | null;
   updatedAt: number;
