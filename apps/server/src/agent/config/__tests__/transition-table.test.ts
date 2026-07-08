@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { allEdges, getEdge } from "../transition-table.ts";
+import { allEdges, getEdge, hasEdge, phaseFromSession } from "../transition-table.ts";
 
 describe("transition table", () => {
   it("build→verify is auto + forced observe", () => {
@@ -48,5 +48,39 @@ describe("transition table", () => {
         "verify->archive",
       ].sort(),
     );
+  });
+
+  it("every edge declares the status it flips the session to (or graduation)", () => {
+    const planMission = getEdge("plan", "mission");
+    expect(planMission.requiresGraduation).toBe(true);
+    expect(getEdge("specify", "build").statusTarget).toBe("building");
+    expect(getEdge("build", "verify").statusTarget).toBe("review");
+    expect(getEdge("verify", "build").statusTarget).toBe("building");
+    expect(getEdge("verify", "archive").statusTarget).toBe("merged");
+  });
+});
+
+describe("phaseFromSession", () => {
+  it("maps a plan session to the plan phase", () => {
+    expect(phaseFromSession({ kind: "plan", status: "specifying" })).toBe("plan");
+  });
+
+  it("maps mission statuses to phases", () => {
+    expect(phaseFromSession({ kind: "mission", status: "specifying" })).toBe("specify");
+    expect(phaseFromSession({ kind: "mission", status: "building" })).toBe("build");
+    expect(phaseFromSession({ kind: "mission", status: "review" })).toBe("verify");
+    expect(phaseFromSession({ kind: "mission", status: "merged" })).toBe("archive");
+  });
+
+  it("falls back to specify for an unknown mission status", () => {
+    expect(phaseFromSession({ kind: "mission", status: "bogus" })).toBe("specify");
+  });
+});
+
+describe("hasEdge", () => {
+  it("returns true for declared edges, false otherwise", () => {
+    expect(hasEdge("build", "verify")).toBe(true);
+    expect(hasEdge("verify", "archive")).toBe(true);
+    expect(hasEdge("build", "archive")).toBe(false);
   });
 });

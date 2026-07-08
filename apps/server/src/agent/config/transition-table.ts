@@ -26,6 +26,10 @@ export interface TransitionEdge {
   mode: Mode;
   /** Force an OM observe on the destination (bias reduction). build→verify only. */
   requiresForcedObserve?: boolean;
+  /** Graduate the plan transcript into the project OM. plan→mission only. */
+  requiresGraduation?: boolean;
+  /** Status to flip the session to (the DB `status` column value). */
+  statusTarget?: string;
   /** The `<instruction>` block delivered to the next phase. */
   instruction: string;
 }
@@ -39,6 +43,7 @@ const TABLE: Record<string, TransitionEdge> = {
     from: "plan",
     to: "mission",
     mode: "gate",
+    requiresGraduation: true,
     // Delivered by embedding in the mission's handoff user message (mission
     // start has no preceding transition call to produce a tool result).
     instruction: instruction(
@@ -49,6 +54,7 @@ const TABLE: Record<string, TransitionEdge> = {
     from: "specify",
     to: "build",
     mode: "gate",
+    statusTarget: "building",
     instruction: instruction(
       'You are now in build mode. Read design.md + tasks.md and implement the change with TDD (failing test first, then minimal implementation, then commit). Check off each task in tasks.md as it lands. When every task is checked AND the project\'s full test suite passes, call transition({to:"verify"}) with a completion summary. Follow the sakti-build skill.',
     ),
@@ -58,6 +64,7 @@ const TABLE: Record<string, TransitionEdge> = {
     to: "verify",
     mode: "auto",
     requiresForcedObserve: true,
+    statusTarget: "review",
     instruction: instruction(
       'You are now in verify mode. Review the work for completeness, correctness, and coherence against design.md + specs + tasks.md. You are edit-denied — do not fix issues yourself; if you find any, write a fixing plan and call transition({to:"build"}) carrying it. Only call transition({to:"archive"}) if the work is genuinely clean. Follow the sakti-verify skill.',
     ),
@@ -66,6 +73,7 @@ const TABLE: Record<string, TransitionEdge> = {
     from: "verify",
     to: "build",
     mode: "auto",
+    statusTarget: "building",
     instruction: instruction(
       'You are now back in build mode. Read the fixing plan from the transition call above and address every issue it lists. Then re-run the project\'s full test suite and call transition({to:"verify"}) again only when tests pass. Do not skip to a final review — the verify agent rejected the previous completion for concrete reasons. Follow the sakti-build skill.',
     ),
@@ -74,6 +82,7 @@ const TABLE: Record<string, TransitionEdge> = {
     from: "verify",
     to: "archive",
     mode: "gate",
+    statusTarget: "merged",
     // Archive is terminal; the archive skill guides the rest.
     instruction: instruction(
       "You are now in archive mode. Sync any delta specs into the main specs, then move this change into the archive. Follow the sakti-archive skill.",
@@ -102,4 +111,26 @@ export function allEdges(): TransitionEdge[] {
 /** Whether a declared edge exists between two phases. */
 export function hasEdge(from: Phase, to: Phase): boolean {
   return TABLE[EDGE_KEY(from, to)] !== undefined;
+}
+
+/**
+ * Derive the current phase from a session's DB state. Plan sessions are always
+ * in the plan phase; missions map by status (specifying→specify,
+ * building→build, review→verify, merged→archive). Used by the runner and the
+ * confirm route to resolve the transition edge.
+ */
+export function phaseFromSession(session: { kind: string; status: string }): Phase {
+  if (session.kind === "plan") return "plan";
+  switch (session.status) {
+    case "specifying":
+      return "specify";
+    case "building":
+      return "build";
+    case "review":
+      return "verify";
+    case "merged":
+      return "archive";
+    default:
+      return "specify";
+  }
 }
