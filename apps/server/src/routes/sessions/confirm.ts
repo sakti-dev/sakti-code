@@ -11,7 +11,17 @@ import {
   type Phase,
 } from "../../agent/config/transition-table.ts";
 import { resolveActiveChangeName } from "../../agent/config/resolve-change-name.ts";
-import { createMissionWorktree, removeMissionWorktree } from "../../lib/worktree.ts";
+import {
+  absorbChangeContent,
+  cleanMainChangeDir,
+  createMissionWorktree,
+  deleteMissionBranch,
+  linkDependencyDirs,
+  missionBranchExists,
+  preflightWorktree,
+  removeMissionWorktree,
+} from "../../lib/worktree.ts";
+import { resolveDependencySymlinkDirs } from "../../lib/worktree-settings.ts";
 import { getCtx } from "../../context.ts";
 
 const confirmBody = Type.Object({
@@ -55,8 +65,36 @@ export const confirmRoutes = new Hono()
           if (project) {
             const changeName = resolveActiveChangeName(project.cwd);
             if (changeName) {
-              const wtPath = createMissionWorktree(project.cwd, changeName);
-              await ctx.repos.sessions.update(id, { changeName, worktreePath: wtPath });
+              // Re-verify the clean invariant (the transition-tool guardrail
+              // already enforced it pre-gate, but state may have changed).
+              const guardErr = preflightWorktree(project.cwd, changeName);
+              if (guardErr) {
+                throw new Error(guardErr);
+              }
+              const branchPreexisted = missionBranchExists(project.cwd, changeName);
+              let wtPath: string | null = null;
+              try {
+                wtPath = createMissionWorktree(project.cwd, existing.projectId, changeName);
+                absorbChangeContent(project.cwd, wtPath, changeName);
+                const depDirs = resolveDependencySymlinkDirs(ctx.settingsFile.read());
+                if (depDirs.warning) {
+                  ctx.log?.server.warn?.(depDirs.warning, {
+                    sessionId: id,
+                    projectCwd: project.cwd,
+                  });
+                }
+                linkDependencyDirs(project.cwd, wtPath, depDirs.dirs);
+                cleanMainChangeDir(project.cwd, changeName);
+                await ctx.repos.sessions.update(id, { changeName, worktreePath: wtPath });
+              } catch (err) {
+                if (wtPath) {
+                  removeMissionWorktree(project.cwd, wtPath);
+                }
+                if (!branchPreexisted) {
+                  deleteMissionBranch(project.cwd, changeName);
+                }
+                throw err;
+              }
             } else {
               // No resolvable change → mission would run unisolated on
               // project.cwd. Surface it so the silent skip is diagnosable
@@ -116,17 +154,21 @@ export const confirmRoutes = new Hono()
  * Removes the mission's git worktree (keeps the branch for merge/review), then
  * clears the now-dangling worktreePath so resolveSessionCwd falls back to
  * project.cwd for any post-done access. The worktree CREATE is done inline in
- * the plan→mission block above (it needs resolveActiveChangeName + the
- * returned path to stamp); teardown only needs the session's changeName.
+ * the plan→mission block above; teardown uses the stored worktreePath.
  */
 function buildWorktreeTeardown(
   ctx: ReturnType<typeof getCtx>,
-  session: { id: string; projectId: string; changeName: string | null },
+  session: {
+    id: string;
+    projectId: string;
+    changeName: string | null;
+    worktreePath: string | null;
+  },
 ): (sessionId: string) => Promise<void> {
   return async (sessionId) => {
     const project = ctx.repos.projects.findById(session.projectId);
-    if (project && session.changeName) {
-      removeMissionWorktree(project.cwd, session.changeName);
+    if (project && session.worktreePath) {
+      removeMissionWorktree(project.cwd, session.worktreePath);
     }
     // The worktree dir is gone — clear the path so it doesn't dangle.
     await ctx.repos.sessions.update(sessionId, { worktreePath: null });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { execSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readlinkSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { makeApp } from "../../../__tests__/helpers.ts";
@@ -314,6 +314,155 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
       expect(after?.pendingTransitionTo).toBe("mission");
       expect(after?.worktreePath).toBeNull();
     } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("plan→mission approve absorbs change content, cleans main, symlinks dependency dirs", async () => {
+    const { app, ctx } = await makeApp([confirmRoutes]);
+    const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-v2-"));
+    execSync("git init -b main", { cwd, shell: "/bin/sh" });
+    execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
+    execSync("git config user.name t", { cwd, shell: "/bin/sh" });
+    execSync("git commit --allow-empty -m init", { cwd, shell: "/bin/sh" });
+    // Main has an uncommitted change dir + dependency/cache dirs.
+    execSync(`mkdir -p ${cwd}/.sakti/changes/add-feature`, { shell: "/bin/sh" });
+    execSync(`echo "name: add-feature" > ${cwd}/.sakti/changes/add-feature/.sakti.yaml`, {
+      shell: "/bin/sh",
+    });
+    execSync(`echo "# proposal" > ${cwd}/.sakti/changes/add-feature/proposal.md`, {
+      shell: "/bin/sh",
+    });
+    execSync(`mkdir -p ${cwd}/node_modules`, { shell: "/bin/sh" });
+    execSync(`mkdir -p ${cwd}/.venv`, { shell: "/bin/sh" });
+    process.env.SAKTI_AGENT_DIR = join(cwd, "agent");
+
+    try {
+      const project = await ctx.repos.projects.create("p", cwd);
+      const session = await ctx.repos.sessions.create(project.id, {
+        kind: "plan",
+        status: "specify",
+        pendingTransitionTo: "mission",
+        pendingTransitionBody: "brief",
+      });
+
+      const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve", to: "mission", body: "brief" }),
+      });
+
+      expect(res.status).toBe(200);
+      const after = ctx.repos.sessions.findById(session.id);
+      const wt = after!.worktreePath!;
+      // Change content absorbed + committed in the worktree.
+      expect(existsSync(join(wt, ".sakti/changes/add-feature/proposal.md"))).toBe(true);
+      const committed = execSync(`git -C "${wt}" show --stat --oneline HEAD`, {
+        shell: "/bin/sh",
+      }).toString();
+      expect(committed).toContain(".sakti/changes/add-feature/proposal.md");
+      // Main cleaned — change dir gone from main.
+      expect(existsSync(join(cwd, ".sakti/changes/add-feature"))).toBe(false);
+      // Dependency/cache dirs symlinked from curated defaults.
+      expect(readlinkSync(join(wt, "node_modules"))).toBe(join(cwd, "node_modules"));
+      expect(readlinkSync(join(wt, ".venv"))).toBe(join(cwd, ".venv"));
+      // Branch survives with the change content.
+      expect(
+        execSync(`git -C "${cwd}" branch --list sakti/add-feature`, {
+          shell: "/bin/sh",
+        }).toString(),
+      ).toContain("sakti/add-feature");
+    } finally {
+      delete process.env.SAKTI_AGENT_DIR;
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("plan→mission approve returns 500 if main gets dirty before approval", async () => {
+    const { app, ctx } = await makeApp([confirmRoutes]);
+    const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-dirty-"));
+    execSync("git init -b main", { cwd, shell: "/bin/sh" });
+    execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
+    execSync("git config user.name t", { cwd, shell: "/bin/sh" });
+    execSync("git commit --allow-empty -m init", { cwd, shell: "/bin/sh" });
+    execSync(`mkdir -p ${cwd}/.sakti/changes/add-feature ${cwd}/src`, { shell: "/bin/sh" });
+    execSync(`echo "name: add-feature" > ${cwd}/.sakti/changes/add-feature/.sakti.yaml`, {
+      shell: "/bin/sh",
+    });
+    execSync(`echo "# proposal" > ${cwd}/.sakti/changes/add-feature/proposal.md`, {
+      shell: "/bin/sh",
+    });
+    execSync(`echo "dirty" > ${cwd}/src/dirty.ts`, { shell: "/bin/sh" });
+    process.env.SAKTI_AGENT_DIR = join(cwd, "agent");
+
+    try {
+      const project = await ctx.repos.projects.create("p", cwd);
+      const session = await ctx.repos.sessions.create(project.id, {
+        kind: "plan",
+        status: "specify",
+        pendingTransitionTo: "mission",
+        pendingTransitionBody: "brief",
+      });
+
+      const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve", to: "mission", body: "brief" }),
+      });
+
+      expect(res.status).toBe(500);
+      const after = ctx.repos.sessions.findById(session.id);
+      expect(after?.pendingTransitionTo).toBe("mission");
+      expect(after?.worktreePath).toBeNull();
+    } finally {
+      delete process.env.SAKTI_AGENT_DIR;
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("plan→mission approve uses global dependency symlink override from settings.json", async () => {
+    const { app, ctx } = await makeApp([confirmRoutes]);
+    const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-deps-"));
+    execSync("git init -b main", { cwd, shell: "/bin/sh" });
+    execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
+    execSync("git config user.name t", { cwd, shell: "/bin/sh" });
+    execSync("git commit --allow-empty -m init", { cwd, shell: "/bin/sh" });
+    execSync(`mkdir -p ${cwd}/.sakti/changes/add-feature ${cwd}/custom-cache`, {
+      shell: "/bin/sh",
+    });
+    execSync(`echo "name: add-feature" > ${cwd}/.sakti/changes/add-feature/.sakti.yaml`, {
+      shell: "/bin/sh",
+    });
+    execSync(`echo "# proposal" > ${cwd}/.sakti/changes/add-feature/proposal.md`, {
+      shell: "/bin/sh",
+    });
+    ctx.settingsFile.update({
+      worktree: { dependencySymlinkDirs: ["custom-cache"] },
+    });
+    process.env.SAKTI_AGENT_DIR = join(cwd, "agent");
+
+    try {
+      const project = await ctx.repos.projects.create("p", cwd);
+      const session = await ctx.repos.sessions.create(project.id, {
+        kind: "plan",
+        status: "specify",
+        pendingTransitionTo: "mission",
+        pendingTransitionBody: "brief",
+      });
+
+      const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve", to: "mission", body: "brief" }),
+      });
+
+      expect(res.status).toBe(200);
+      const after = ctx.repos.sessions.findById(session.id);
+      expect(readlinkSync(join(after!.worktreePath!, "custom-cache"))).toBe(
+        join(cwd, "custom-cache"),
+      );
+    } finally {
+      delete process.env.SAKTI_AGENT_DIR;
       rmSync(cwd, { recursive: true, force: true });
     }
   });
