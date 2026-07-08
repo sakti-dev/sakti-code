@@ -116,7 +116,7 @@ export const PlanGrid = (props: PlanGridProps): JSX.Element => {
                   <PlanCard
                     title={child.title}
                     updatedAt={child.updatedAt}
-                    hasPendingAsk={!!child.pendingAskKind}
+                    hasPendingTransition={!!child.pendingTransitionTo}
                     onClick={() => openSessionTab(props.projectId, child.id, "plan")}
                   />
                 )}

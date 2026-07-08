@@ -1,11 +1,11 @@
 import type { AgentTool } from "@sakti-code/agent";
 import {
-  createAskTool,
   createBashTool,
   createEditTool,
   createFindTool,
   createGrepTool,
   createReadTool,
+  createTransitionTool,
   createWebFetchTool,
   createWebSearchTool,
   createWriteTool,
@@ -58,7 +58,7 @@ export const TOOL_FACTORIES: Readonly<Record<string, ToolFactory>> = {
     createWebSearchTool(
       ctx.websearchOperations ? { operations: ctx.websearchOperations } : {},
     ) as AgentTool,
-  ask: () => createAskTool() as AgentTool,
+  transition: () => createTransitionTool() as AgentTool,
 };
 
 /**

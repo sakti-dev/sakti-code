@@ -5,7 +5,6 @@ import {
 } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
 import Type from "typebox";
-import { isKnownAskKind } from "./config/ask-kinds.ts";
 import type { ServerContext } from "../context.ts";
 import { getPermissionChannel } from "../lib/permission-channel.ts";
 import {
@@ -189,47 +188,12 @@ export const wsResponseSchema = Type.Union([
 ]);
 
 /**
- * Authoritative side-effect of an `ask` tool-call: persist the pending ask
- * (kind+body) so the confirm card survives reload, and flip status → `review`
- * on a completion ask (the design's auto-transition building → review). Known
- * kinds only; an open question (no kind) is transient and stays in the
- * transcript. No-ops for non-ask events. Errors are logged, never thrown —
- * this runs as a fire-and-forget off the WS event stream.
- */
-export async function persistAskSideEffect(
-  ctx: ServerContext,
-  sessionId: string,
-  event: AgentHarnessEvent,
-): Promise<void> {
-  if (event.type !== "tool_execution_start" || event.toolName !== "ask") {
-    return;
-  }
-  const args = event.args as { kind?: unknown; body?: unknown };
-  if (typeof args.body !== "string") {
-    return;
-  }
-  const kind = typeof args.kind === "string" && isKnownAskKind(args.kind) ? args.kind : null;
-  if (!kind) {
-    return;
-  }
-  try {
-    await ctx.repos.sessions.update(sessionId, {
-      pendingAskKind: kind,
-      pendingAskBody: args.body,
-      ...(kind === "completion" ? { status: "review" } : {}),
-    });
-  } catch (err) {
-    ctx.log?.server.error?.("failed to persist pending ask", err, { sessionId, kind });
-  }
-}
-
-/**
  * Authoritative side-effect of a `transition` tool-call: persist the raw
  * {to, body} so a pending gate card survives reload, and so the runner can
- * resolve the edge (gate vs auto) and act. Unlike the ask hook, this does NOT
- * resolve gating or flip status — the runner owns mode resolution (it has the
- * transition table + can chain/auto-start). Records every transition call with
- * a string `to` + `body`; no-ops otherwise. Errors are logged, never thrown.
+ * resolve the edge (gate vs auto) and act. This does NOT resolve gating or
+ * flip status — the runner owns mode resolution (it has the transition table
+ * + can chain/auto-start). Records every transition call with a string `to`
+ * + `body`; no-ops otherwise. Errors are logged, never thrown.
  */
 export async function persistTransitionSideEffect(
   ctx: ServerContext,
@@ -268,19 +232,17 @@ export async function runAgentStream(
   if (storage instanceof SqliteSessionStorage) {
     storage.setCurrentTurnId(turn.id);
   }
-  // A new run supersedes any pending ask/transition: clear the persisted
-  // pending state so a reload during this run doesn't resurface a stale card.
-  // If the agent calls `ask`/`transition` again this turn, the side-effects
-  // below re-set them. Best-effort — a clear failure must never block a run.
+  // A new run supersedes any pending transition: clear the persisted pending
+  // state so a reload during this run doesn't resurface a stale card. If the
+  // agent calls `transition` again this turn, the side-effect below re-sets
+  // it. Best-effort — a clear failure must never block a run.
   try {
     await ctx.repos.sessions.update(sessionId, {
-      pendingAskKind: null,
-      pendingAskBody: null,
       pendingTransitionTo: null,
       pendingTransitionBody: null,
     });
   } catch (err) {
-    ctx.log?.server.warn?.("failed to clear pending state on run start", {
+    ctx.log?.server.warn?.("failed to clear pending transition on run start", {
       sessionId,
       error: err instanceof Error ? err.message : String(err),
     });
@@ -302,15 +264,10 @@ export async function runAgentStream(
           sessionId,
           type: "event",
         } satisfies EventFrame);
-        // Authoritative pending-ask persistence: when an `ask` tool-call of a
-        // known gate kind starts, persist kind+body so the card survives
-        // reload. For `completion`, also flip status → review (the
-        // design's auto-transition on ask(completion)). Fire-and-forget; the
-        // helper logs its own errors so it can never break the event stream.
-        void persistAskSideEffect(ctx, sessionId, event);
-        // Parallel pending-transition persistence: record the raw {to, body}
-        // of a `transition` tool-call. The runner resolves gate/auto and
+        // Authoritative pending-transition persistence: record the raw {to,
+        // body} of a `transition` tool-call. The runner resolves gate/auto and
         // either chains (auto) or leaves it pending for the confirm route.
+        // Fire-and-forget; the helper logs its own errors.
         void persistTransitionSideEffect(ctx, sessionId, event);
       },
       (frame) => {

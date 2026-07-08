@@ -18,30 +18,30 @@ export function MissionChatView(props: MissionChatViewProps): JSX.Element {
   });
 
   const turns = createMemo(() => sessionStore()?.store.turns ?? []);
-  const pendingAsk = () => sessionStore()?.store.pendingAsk ?? null;
+  const pendingTransition = () => sessionStore()?.store.pendingTransition ?? null;
 
   const handleAsk = async (askAction: "approve" | "reject") => {
-    const ask = pendingAsk();
+    const ask = pendingTransition();
     if (!ask) {
       return;
     }
     // Only clear the card once the server confirms — on failure, leave it so
     // the user can retry. (The server is the source of truth; it clears the
     // persisted pending ask on both approve and reject.)
-    const ok = await actions.confirmAsk(props.sessionId, ask.kind, ask.body, askAction);
+    const ok = await actions.confirmTransition(props.sessionId, ask.to, ask.body, askAction);
     if (ok) {
-      sessionStore()?.actions.clearPendingAsk();
+      sessionStore()?.actions.clearPendingTransition();
     }
   };
 
   return (
     <div class="flex min-h-0 flex-1 flex-col">
       <MessageTimeline sessionId={props.sessionId} turns={turns} />
-      <Show when={pendingAsk()}>
+      <Show when={pendingTransition()}>
         {(ask) => (
           <div class="px-4 pb-2">
             <AskCard
-              kind={ask().kind}
+              to={ask().to}
               body={ask().body}
               onApprove={() => handleAsk("approve")}
               onReject={() => handleAsk("reject")}

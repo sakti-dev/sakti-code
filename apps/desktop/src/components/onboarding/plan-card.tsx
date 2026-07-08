@@ -3,7 +3,7 @@ import { Show, type JSX } from "solid-js";
 interface PlanCardProps {
   title: string | null;
   updatedAt: number;
-  hasPendingAsk: boolean;
+  hasPendingTransition: boolean;
   onClick: () => void;
 }
 
@@ -27,7 +27,10 @@ export function PlanCard(props: PlanCardProps): JSX.Element {
     >
       <span class="line-clamp-1 font-medium text-sm">{props.title ?? "Untitled plan"}</span>
       <span class="flex items-center gap-1.5 text-muted-foreground text-xs">
-        <Show when={props.hasPendingAsk} fallback={<span>{formatRelative(props.updatedAt)}</span>}>
+        <Show
+          when={props.hasPendingTransition}
+          fallback={<span>{formatRelative(props.updatedAt)}</span>}
+        >
           <span class="plan-pending-dot inline-block h-1.5 w-1.5 rounded-full bg-primary" />
           <span>waiting for you</span>
         </Show>

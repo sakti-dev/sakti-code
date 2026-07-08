@@ -71,14 +71,14 @@ describe("server agents", () => {
     const plan = resolveServerAgent("plan");
     expect(plan).toBeDefined();
     expect(plan!.permission).toBeDefined();
-    expect(plan!.activeToolNames).toContain("ask");
+    expect(plan!.activeToolNames).toContain("transition");
     expect(plan!.activeToolNames).toContain("read");
 
     const build = resolveServerAgent("build")!;
     // Plan has a distinct ruleset from build (not inheriting).
     expect(plan!.permission).not.toBe(build.permission);
-    // Both plan and build carry ask (the SDD gate tool).
-    expect(build.activeToolNames).toContain("ask");
+    // Both plan and build carry transition (the SDD lifecycle tool).
+    expect(build.activeToolNames).toContain("transition");
   });
 
   it("plan ruleset asks before destructive bash ops but allows research ops", () => {
@@ -110,7 +110,7 @@ describe("verify agent", () => {
       "bash",
       "webfetch",
       "websearch",
-      "ask",
+      "transition",
     ]);
   });
 

@@ -1,5 +1,3 @@
-export type { AskToolInput } from "./ask/index";
-export { createAskTool } from "./ask/index";
 export type { TransitionToolInput } from "./transition/index";
 export { createTransitionTool } from "./transition/index";
 export type { BashOperations, BashToolDetails, BashToolInput, BashToolOptions } from "./bash/index";

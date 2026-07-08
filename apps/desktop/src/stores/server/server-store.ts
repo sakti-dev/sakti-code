@@ -9,12 +9,14 @@ export interface Project {
 }
 
 export interface SessionMeta {
+  changeName: string | null;
   createdAt: number;
   id: string;
   kind: "plan" | "mission";
   modelId: string | null;
-  pendingAskBody: string | null;
-  pendingAskKind: "session" | "spec" | "completion" | null;
+  parentSessionId: string | null;
+  pendingTransitionBody: string | null;
+  pendingTransitionTo: string | null;
   profileId: string | null;
   projectId: string;
   status: "specifying" | "building" | "review" | "merged";

@@ -2,38 +2,39 @@ import { FiCheckCircle, FiClipboard, FiFileText } from "solid-icons/fi";
 import { createSignal, type JSX, Show } from "solid-js";
 import { Dynamic } from "solid-js/web";
 
-export type AskKind = "session" | "spec" | "completion";
+/** Destination phases that render a gate card. Auto edges never reach the card. */
+export type TransitionGateTo = "archive" | "build" | "mission";
 
 const COPY: Record<
-  AskKind,
+  TransitionGateTo,
   { title: string; approve: string; reject: string; icon: typeof FiClipboard }
 > = {
-  session: { title: "Proposed Session", approve: "Create", reject: "Revise", icon: FiClipboard },
-  spec: { title: "Proposed Spec", approve: "Approve", reject: "Revise", icon: FiFileText },
-  completion: {
-    title: "Ready for Review",
-    approve: "Merge",
+  mission: { title: "Proposed Mission", approve: "Create", reject: "Revise", icon: FiClipboard },
+  build: { title: "Proposed Spec", approve: "Approve", reject: "Revise", icon: FiFileText },
+  archive: {
+    title: "Ready to Archive",
+    approve: "Archive",
     reject: "Request changes",
     icon: FiCheckCircle,
   },
 };
 
-interface AskCardProps {
-  kind: AskKind;
+interface TransitionCardProps {
+  to: string;
   body: string;
   onApprove: () => void;
   onReject: () => void;
 }
 
-export function AskCard(props: AskCardProps): JSX.Element {
+export function AskCard(props: TransitionCardProps): JSX.Element {
   const [expanded, setExpanded] = createSignal(true);
-  const copy = () => COPY[props.kind];
+  const copy = () => COPY[props.to as TransitionGateTo] ?? COPY.build;
 
   return (
     <div
       class="rounded-lg border border-primary/30 bg-primary/5 p-4"
       data-component="ask-card"
-      data-kind={props.kind}
+      data-to={props.to}
     >
       <div class="mb-2 flex items-center gap-2">
         <Dynamic component={copy().icon} class="h-4 w-4 text-primary" />

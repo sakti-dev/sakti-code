@@ -199,8 +199,10 @@ describe("actions", () => {
         profileId: null,
         thinkingLevel: "off",
         kind: "mission",
-        pendingAskBody: null,
-        pendingAskKind: null,
+        pendingTransitionBody: null,
+        parentSessionId: null,
+        changeName: null,
+        pendingTransitionTo: null,
         status: "building",
         createdAt: 1,
         updatedAt: 1,
@@ -218,8 +220,10 @@ describe("actions", () => {
                   profileId: "fast",
                   thinkingLevel: "off",
                   kind: "mission",
-                  pendingAskBody: null,
-                  pendingAskKind: null,
+                  pendingTransitionBody: null,
+                  parentSessionId: null,
+                  changeName: null,
+                  pendingTransitionTo: null,
                   status: "building",
                   createdAt: 1,
                   updatedAt: 1,
@@ -328,7 +332,7 @@ describe("actions", () => {
     expect((toolPart as { status: string }).status).toBe("done");
   });
 
-  describe("confirmAsk", () => {
+  describe("confirmTransition", () => {
     it("POSTs the confirm action and mirrors the returned status", async () => {
       const deps = makeDeps();
       deps.serverStore.actions.addSession({
@@ -339,8 +343,10 @@ describe("actions", () => {
         profileId: null,
         thinkingLevel: "off",
         kind: "mission",
-        pendingAskBody: null,
-        pendingAskKind: null,
+        pendingTransitionBody: null,
+        parentSessionId: null,
+        changeName: null,
+        pendingTransitionTo: null,
         status: "specifying",
         createdAt: 1,
         updatedAt: 1,
@@ -359,8 +365,10 @@ describe("actions", () => {
                     profileId: null,
                     thinkingLevel: "off",
                     kind: "mission",
-                    pendingAskBody: null,
-                    pendingAskKind: null,
+                    pendingTransitionBody: null,
+                    parentSessionId: null,
+                    changeName: null,
+                    pendingTransitionTo: null,
                     status: "building",
                     createdAt: 1,
                     updatedAt: 2,
@@ -373,11 +381,11 @@ describe("actions", () => {
       };
       const actions = createActions(mockApi as never, makeMockWs(), deps);
 
-      await actions.confirmAsk("s1", "spec", "the spec body", "approve");
+      await actions.confirmTransition("s1", "build", "the spec body", "approve");
 
       expect(mockApi.api.sessions[":id"].confirm.$post).toHaveBeenCalledWith({
         param: { id: "s1" },
-        json: { action: "approve", kind: "spec", body: "the spec body" },
+        json: { action: "approve", to: "build", body: "the spec body" },
       });
       expect(deps.serverStore.store.sessions.s1?.status).toBe("building");
     });
@@ -392,8 +400,10 @@ describe("actions", () => {
         profileId: null,
         thinkingLevel: "off",
         kind: "mission",
-        pendingAskBody: null,
-        pendingAskKind: null,
+        pendingTransitionBody: null,
+        parentSessionId: null,
+        changeName: null,
+        pendingTransitionTo: null,
         status: "specifying",
         createdAt: 1,
         updatedAt: 1,
@@ -411,7 +421,7 @@ describe("actions", () => {
       };
       const actions = createActions(mockApi as never, makeMockWs(), deps);
 
-      await actions.confirmAsk("s1", "spec", "body", "approve");
+      await actions.confirmTransition("s1", "build", "body", "approve");
 
       expect(deps.serverStore.store.sessions.s1?.status).toBe("specifying");
     });
@@ -428,8 +438,10 @@ describe("actions", () => {
         profileId: null,
         thinkingLevel: "off",
         kind: "mission",
-        pendingAskBody: null,
-        pendingAskKind: null,
+        pendingTransitionBody: null,
+        parentSessionId: null,
+        changeName: null,
+        pendingTransitionTo: null,
         status: "specifying",
         createdAt: 1,
         updatedAt: 1,
@@ -447,8 +459,10 @@ describe("actions", () => {
                   profileId: null,
                   thinkingLevel: "off",
                   kind: "mission",
-                  pendingAskBody: null,
-                  pendingAskKind: null,
+                  pendingTransitionBody: null,
+                  parentSessionId: null,
+                  changeName: null,
+                  pendingTransitionTo: null,
                   status: "specifying",
                   createdAt: 1,
                   updatedAt: 2,
@@ -482,8 +496,10 @@ describe("actions", () => {
         profileId: null,
         thinkingLevel: "off",
         kind: "mission",
-        pendingAskBody: null,
-        pendingAskKind: null,
+        pendingTransitionBody: null,
+        parentSessionId: null,
+        changeName: null,
+        pendingTransitionTo: null,
         status: "specifying",
         createdAt: 1,
         updatedAt: 1,

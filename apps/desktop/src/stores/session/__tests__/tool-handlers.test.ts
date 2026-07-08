@@ -69,32 +69,32 @@ describe("tool handlers", () => {
     expect(part).toMatchObject({ type: "tool_call", status: "error" });
   });
 
-  it("ask tool with kind=session sets pendingAsk", () => {
+  it("transition tool sets pendingTransition (to + body)", () => {
     const { session, dispatch } = setupHandlers();
     dispatch({ message: userMsg("hi"), type: "message_start" });
     dispatch({ message: assistantMsg(), type: "message_start" });
     dispatch({
-      args: { kind: "session", body: "Let's build X" },
+      args: { to: "build", body: "spec summary" },
       toolCallId: "tc1",
-      toolName: "ask",
+      toolName: "transition",
       type: "tool_execution_start",
     });
-    expect(session.store.pendingAsk).toMatchObject({
-      kind: "session",
-      body: "Let's build X",
+    expect(session.store.pendingTransition).toMatchObject({
+      to: "build",
+      body: "spec summary",
     });
   });
 
-  it("ask tool without a known kind does not set pendingAsk (open question)", () => {
+  it("transition tool without a `to` does not set pendingTransition", () => {
     const { session, dispatch } = setupHandlers();
     dispatch({ message: userMsg("hi"), type: "message_start" });
     dispatch({ message: assistantMsg(), type: "message_start" });
     dispatch({
       args: { body: "which branch?" },
       toolCallId: "tc1",
-      toolName: "ask",
+      toolName: "transition",
       type: "tool_execution_start",
     });
-    expect(session.store.pendingAsk).toBeNull();
+    expect(session.store.pendingTransition).toBeNull();
   });
 });

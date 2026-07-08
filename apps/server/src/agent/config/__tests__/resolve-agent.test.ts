@@ -22,7 +22,7 @@ describe("resolveSessionAgentForKind", () => {
   it("plan kind with no override → plan agent", () => {
     const { agent } = resolveSessionAgentForKind("plan", []);
     expect(agent.name).toBe("plan");
-    expect(agent.activeToolNames).toContain("ask");
+    expect(agent.activeToolNames).toContain("transition");
   });
 
   it("mission kind with no override → build agent (the default)", () => {
@@ -112,6 +112,6 @@ describe("resolveAgentByName", () => {
   it("plan agent is resolvable", () => {
     const resolved = resolveAgentByName("plan", []);
     expect(resolved.name).toBe("plan");
-    expect(resolved.activeToolNames).toContain("ask");
+    expect(resolved.activeToolNames).toContain("transition");
   });
 });

@@ -6,15 +6,13 @@ export function registerToolHandlers(): void {
     if (msgId) {
       ctx.actions.addToolCall(msgId, event.toolCallId, event.toolName, event.args);
     }
-    if (event.toolName === "ask") {
-      const args = event.args as { kind?: unknown; body?: unknown };
-      if (typeof args.body === "string") {
-        const kind = typeof args.kind === "string" ? args.kind : undefined;
-        // Only the wired gate kinds surface a confirmation card; an ask with
-        // no/unknown kind is an open question that stays in the transcript.
-        if (kind === "session" || kind === "spec" || kind === "completion") {
-          ctx.actions.setPendingAsk({ kind, body: args.body });
-        }
+    if (event.toolName === "transition") {
+      const args = event.args as { to?: unknown; body?: unknown };
+      if (typeof args.to === "string" && typeof args.body === "string") {
+        // A transition tool-call surfaces a confirmation card (for gate edges)
+        // or auto-chains (for auto edges, handled server-side). The card
+        // carries the destination phase + body.
+        ctx.actions.setPendingTransition({ to: args.to, body: args.body });
       }
     }
   });

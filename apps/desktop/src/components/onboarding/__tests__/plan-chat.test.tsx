@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   loadChat: vi.fn(),
-  clearPendingAsk: vi.fn(),
-  confirmAsk: vi.fn(async () => true),
+  clearPendingTransition: vi.fn(),
+  confirmTransition: vi.fn(async () => true),
   createSession: vi.fn(async () => ({ id: "mission-1" })),
   createChildPlan: vi.fn(async () => ({ id: "plan-1" })),
   sendPrompt: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock("~/stores/store-context", () => ({
   useStore: () => ({
     actions: {
       loadChat: mocks.loadChat,
-      confirmAsk: mocks.confirmAsk,
+      confirmTransition: mocks.confirmTransition,
       createSession: mocks.createSession,
       createChildPlan: mocks.createChildPlan,
       sendPrompt: mocks.sendPrompt,
@@ -35,7 +35,7 @@ vi.mock("~/stores/store-context", () => ({
           turns: [],
           pendingAsk: null,
         },
-        actions: { clearPendingAsk: mocks.clearPendingAsk },
+        actions: { clearPendingTransition: mocks.clearPendingTransition },
       }),
     },
     server: { store: { sessions: {} as Record<string, { profileId: string | null }> } },

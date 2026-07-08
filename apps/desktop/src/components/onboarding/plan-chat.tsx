@@ -51,13 +51,13 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
 
   const handleConfirmSession = async () => {
     const session = sessionStore();
-    const ask = session?.store.pendingAsk;
+    const ask = session?.store.pendingTransition;
     const sid = props.sessionId;
     if (!(session && ask && sid)) {
       return;
     }
 
-    await actions.confirmAsk(sid, ask.kind, ask.body, "approve");
+    await actions.confirmTransition(sid, ask.to, ask.body, "approve");
 
     const title =
       ask.body
@@ -76,7 +76,7 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
       await actions.selectProfile(missionSession.id, planProfileId);
     }
 
-    session.actions.clearPendingAsk();
+    session.actions.clearPendingTransition();
 
     const planIdx = getSessionTabIndex(props.projectId, sid);
     if (planIdx >= 0) closeSessionTab(props.projectId, planIdx);
@@ -95,14 +95,14 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
       >
         <EmptyState />
       </Show>
-      <Show when={sessionStore()?.store.pendingAsk}>
+      <Show when={sessionStore()?.store.pendingTransition}>
         {(ask) => (
           <div class="px-4 pb-2">
             <AskCard
-              kind={ask().kind}
+              to={ask().to}
               body={ask().body}
               onApprove={handleConfirmSession}
-              onReject={() => sessionStore()?.actions.clearPendingAsk()}
+              onReject={() => sessionStore()?.actions.clearPendingTransition()}
             />
           </div>
         )}

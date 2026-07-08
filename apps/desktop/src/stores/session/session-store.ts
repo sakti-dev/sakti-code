@@ -10,8 +10,8 @@ import type {
 } from "../types.ts";
 import { idleStreamState } from "../types.ts";
 
-export interface PendingAsk {
-  kind: "session" | "spec" | "completion";
+export interface PendingTransition {
+  to: string;
   body: string;
 }
 
@@ -46,7 +46,7 @@ export interface OmMarkerInput {
 
 export interface SessionStoreData {
   omStatus: OmWindowState | null;
-  pendingAsk: PendingAsk | null;
+  pendingTransition: PendingTransition | null;
   permission: PermissionPending | null;
   retry: RetryState | null;
   streaming: StreamState;
@@ -61,7 +61,7 @@ export interface SessionActions {
   appendThinkingToken: (msgId: string, delta: string) => void;
   clearCurrentMessage: () => void;
   clearCurrentTool: () => void;
-  clearPendingAsk: () => void;
+  clearPendingTransition: () => void;
   completeToolCall: (
     msgId: string,
     toolCallId: string,
@@ -84,7 +84,7 @@ export interface SessionActions {
   setError: (msgId: string, error: string) => void;
   setPermission: (permission: PermissionPending | null) => void;
   setPhase: (phase: StreamState["phase"]) => void;
-  setPendingAsk: (ask: PendingAsk) => void;
+  setPendingTransition: (ask: PendingTransition) => void;
   setRetry: (retry: RetryState | null) => void;
   startTurn: (userMessage: UIMessage | null, startedAt?: number) => void;
   updateOmMarker: (msgId: string, cycleId: string, updates: Partial<OmMarkerInput>) => void;
@@ -110,7 +110,7 @@ interface MsgLocation {
 export function createSessionStore(): SessionStore {
   const [store, setStore] = createStore<SessionStoreData>({
     omStatus: null,
-    pendingAsk: null,
+    pendingTransition: null,
     permission: null,
     retry: null,
     streaming: { ...idleStreamState },
@@ -431,12 +431,12 @@ export function createSessionStore(): SessionStore {
       setStore("streaming", "phase", phase);
     },
 
-    setPendingAsk(ask) {
-      setStore("pendingAsk", ask);
+    setPendingTransition(ask) {
+      setStore("pendingTransition", ask);
     },
 
-    clearPendingAsk() {
-      setStore("pendingAsk", null);
+    clearPendingTransition() {
+      setStore("pendingTransition", null);
     },
 
     setPermission(permission) {
@@ -572,7 +572,7 @@ export function createSessionStore(): SessionStore {
       setStore(
         produce((s) => {
           s.turns = [];
-          s.pendingAsk = null;
+          s.pendingTransition = null;
           s.permission = null;
           s.retry = null;
           s.streaming = { ...idleStreamState };

@@ -33,12 +33,6 @@ export const sessions = sqliteTable("sessions", {
   // Cleared on the next run. Nullable — null means no pending transition.
   pendingTransitionTo: text("pending_transition_to"),
   pendingTransitionBody: text("pending_transition_body"),
-  // Pending ask tool-call awaiting a user confirm/revise action. Set
-  // server-side when an agent's `ask` tool-call of a known kind completes;
-  // cleared on confirm, reject, or the next run. Nullable — null means no
-  // pending ask. Persisted (not derived) so it survives reload.
-  pendingAskKind: text("pending_ask_kind"),
-  pendingAskBody: text("pending_ask_body"),
   thinkingLevel: text("thinking_level").notNull().default("off"),
   leafId: text("leaf_id"),
   createdAt: integer("created_at").notNull(),

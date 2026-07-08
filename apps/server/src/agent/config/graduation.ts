@@ -5,8 +5,8 @@ import { createSessionStorage } from "../../context.ts";
 import { resolveOmConfig } from "./index.ts";
 
 /**
- * Build the plan-graduation callback. On `ask(kind=session)` approval from a
- * child plan, this runs a one-shot OM engine over the child's transcript with
+ * Build the plan-graduation callback. On the plan→mission transition gate
+ * approval from a child plan, this runs a one-shot OM engine over the child's transcript with
  * `scope: "resource"` — so the engine keys its output at the project's OM slot
  * `(threadId=null, resourceId=projectId)` (engine.ts:84-88) — and force-observes
  * then force-reflects, landing the reflection in the main plan's memory.

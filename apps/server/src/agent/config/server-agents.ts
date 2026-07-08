@@ -86,7 +86,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "find",
       "webfetch",
       "websearch",
-      "ask",
+      "transition",
     ],
   }),
   defineAgent({
@@ -105,7 +105,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "Verification agent. Reviews completed work for bugs, completeness, and coherence. Edit-denied: reports issues, does not fix them.",
     systemPrompt: BASE_PROMPT,
     permission: verifyRuleset(),
-    activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch", "ask"],
+    activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch", "transition"],
   }),
   defineAgent({
     name: "general",
@@ -130,7 +130,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
       "bash",
       "grep",
       "find",
-      "ask",
+      "transition",
       "webfetch",
       "websearch",
     ],

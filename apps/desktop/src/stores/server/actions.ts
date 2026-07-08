@@ -25,9 +25,9 @@ export interface ActionsDeps {
 export interface Actions {
   abortRun: (sessionId: string) => void;
   addProject: (cwd: string) => Promise<Project | undefined>;
-  confirmAsk: (
+  confirmTransition: (
     sessionId: string,
-    kind: string,
+    to: string,
     body: string,
     action: "approve" | "reject",
   ) => Promise<boolean>;
@@ -173,13 +173,16 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
         const turns = hydrateChatTurns(body.turns);
         const session = sessionRegistry.get(sessionId);
         session.actions.loadTurns(turns);
-        // Re-derive the pending ask from persisted server state so the confirm
-        // card survives reload (the live WS event path sets it during a run).
+        // Re-derive the pending transition from persisted server state so the
+        // confirm card survives reload (the live WS event path sets it during a run).
         const meta = server.store.sessions[sessionId];
-        if (meta?.pendingAskKind && meta?.pendingAskBody) {
-          session.actions.setPendingAsk({ kind: meta.pendingAskKind, body: meta.pendingAskBody });
+        if (meta?.pendingTransitionTo && meta?.pendingTransitionBody) {
+          session.actions.setPendingTransition({
+            to: meta.pendingTransitionTo,
+            body: meta.pendingTransitionBody,
+          });
         } else {
-          session.actions.clearPendingAsk();
+          session.actions.clearPendingTransition();
         }
       } catch (error) {
         setLastError(error instanceof Error ? error.message : "Failed to load chat");
@@ -216,14 +219,14 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
       const session = sessionRegistry.get(sessionId);
       const sessionMeta = server.store.sessions[sessionId];
 
-      // A new prompt supersedes any pending ask card (the user typed instead
-      // of clicking Approve/Revise). Clears both the local card and the
-      // server-side persisted state (the run starting server-side also clears).
-      session.actions.clearPendingAsk();
-      if (sessionMeta?.pendingAskKind) {
+      // A new prompt supersedes any pending transition card (the user typed
+      // instead of clicking Approve/Reject). Clears both the local card and
+      // the server-side persisted state (the run starting server-side also clears).
+      session.actions.clearPendingTransition();
+      if (sessionMeta?.pendingTransitionTo) {
         server.actions.updateSession(sessionId, {
-          pendingAskKind: null,
-          pendingAskBody: null,
+          pendingTransitionTo: null,
+          pendingTransitionBody: null,
         });
       }
 
@@ -251,26 +254,26 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
       ws.send({ type: "abort", sessionId });
     },
 
-    async confirmAsk(sessionId, kind, body, action) {
+    async confirmTransition(sessionId, to, body, action) {
       try {
         const res = await api.api.sessions[":id"].confirm.$post({
           param: { id: sessionId },
-          json: { action, kind, body },
+          json: { action, to, body },
         });
         if (!res.ok) {
           setLastError(`Failed to ${action} (${res.status})`);
           return false;
         }
         const updated = (await res.json()) as SessionMeta;
-        // Mirror the server: status advanced + pending ask cleared.
+        // Mirror the server: status advanced + pending transition cleared.
         server.actions.updateSession(sessionId, {
           status: updated.status,
-          pendingAskKind: null,
-          pendingAskBody: null,
+          pendingTransitionTo: null,
+          pendingTransitionBody: null,
         });
         return true;
       } catch (error) {
-        setLastError(error instanceof Error ? error.message : "Failed to confirm ask");
+        setLastError(error instanceof Error ? error.message : "Failed to confirm transition");
         return false;
       }
     },

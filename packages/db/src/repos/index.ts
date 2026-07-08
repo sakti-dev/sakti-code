@@ -67,8 +67,6 @@ export class SessionRepo {
       changeName?: string | null;
       pendingTransitionTo?: string | null;
       pendingTransitionBody?: string | null;
-      pendingAskKind?: string | null;
-      pendingAskBody?: string | null;
     },
   ) {
     const id = crypto.randomUUID();
@@ -92,8 +90,6 @@ export class SessionRepo {
       ...(options?.pendingTransitionBody === undefined
         ? {}
         : { pendingTransitionBody: options.pendingTransitionBody }),
-      ...(options?.pendingAskKind === undefined ? {} : { pendingAskKind: options.pendingAskKind }),
-      ...(options?.pendingAskBody === undefined ? {} : { pendingAskBody: options.pendingAskBody }),
       createdAt: now,
       updatedAt: now,
     });
@@ -140,8 +136,6 @@ export class SessionRepo {
         | "changeName"
         | "pendingTransitionTo"
         | "pendingTransitionBody"
-        | "pendingAskKind"
-        | "pendingAskBody"
       >
     >,
   ) {
