@@ -1,5 +1,5 @@
 import { createEffect, createMemo, type JSX, Show } from "solid-js";
-import { AskCard } from "~/components/chat-area/parts/ask-card";
+import { TransitionCard } from "~/components/chat-area/parts/transition-card";
 import { MessageTimeline } from "~/components/chat-area/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
 import { useStore } from "~/stores/store-context";
@@ -102,7 +102,7 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
       <Show when={sessionStore()?.store.pendingTransition}>
         {(ask) => (
           <div class="px-4 pb-2">
-            <AskCard
+            <TransitionCard
               to={ask().to}
               body={ask().body}
               onApprove={handleConfirmSession}

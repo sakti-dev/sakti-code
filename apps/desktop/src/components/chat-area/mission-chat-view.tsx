@@ -1,5 +1,5 @@
 import { createMemo, type JSX, onMount, Show } from "solid-js";
-import { AskCard } from "~/components/chat-area/parts/ask-card";
+import { TransitionCard } from "~/components/chat-area/parts/transition-card";
 import { MessageTimeline } from "~/components/chat-area/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
 import { useStore } from "~/stores/store-context";
@@ -43,7 +43,7 @@ export function MissionChatView(props: MissionChatViewProps): JSX.Element {
       <Show when={pendingTransition()}>
         {(ask) => (
           <div class="px-4 pb-2">
-            <AskCard
+            <TransitionCard
               to={ask().to}
               body={ask().body}
               onApprove={() => handleAsk("approve")}

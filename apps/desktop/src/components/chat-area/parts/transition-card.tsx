@@ -26,14 +26,14 @@ interface TransitionCardProps {
   onReject: () => void;
 }
 
-export function AskCard(props: TransitionCardProps): JSX.Element {
+export function TransitionCard(props: TransitionCardProps): JSX.Element {
   const [expanded, setExpanded] = createSignal(true);
   const copy = () => COPY[props.to as TransitionGateTo] ?? COPY.build;
 
   return (
     <div
       class="rounded-lg border border-primary/30 bg-primary/5 p-4"
-      data-component="ask-card"
+      data-component="transition-card"
       data-to={props.to}
     >
       <div class="mb-2 flex items-center gap-2">

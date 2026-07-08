@@ -33,7 +33,7 @@ vi.mock("~/stores/store-context", () => ({
         store: {
           streaming: { phase: "idle" },
           turns: [],
-          pendingAsk: null,
+          pendingTransition: null,
         },
         actions: { clearPendingTransition: mocks.clearPendingTransition },
       }),
