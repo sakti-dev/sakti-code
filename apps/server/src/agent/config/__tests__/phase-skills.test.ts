@@ -10,9 +10,9 @@ describe("getBuiltinSkillForPhase", () => {
     expect(getBuiltinSkillForPhase("plan")).toBe("sakti-plan");
   });
 
-  it("maps specifying status (design phase) to sakti-design skill", () => {
-    expect(getBuiltinSkillForPhase("design")).toBe("sakti-design");
-    expect(getBuiltinSkillForPhase("specifying")).toBe("sakti-design");
+  it("maps specifying status (specify phase) to sakti-specify skill", () => {
+    expect(getBuiltinSkillForPhase("specify")).toBe("sakti-specify");
+    expect(getBuiltinSkillForPhase("specifying")).toBe("sakti-specify");
   });
 
   it("maps building status to sakti-build skill", () => {
@@ -39,7 +39,7 @@ describe("getBuiltinSkillForPhase", () => {
 describe("isBuiltinSkillName", () => {
   it("returns true for the 5 phase skills", () => {
     expect(isBuiltinSkillName("sakti-plan")).toBe(true);
-    expect(isBuiltinSkillName("sakti-design")).toBe(true);
+    expect(isBuiltinSkillName("sakti-specify")).toBe(true);
     expect(isBuiltinSkillName("sakti-build")).toBe(true);
     expect(isBuiltinSkillName("sakti-verify")).toBe(true);
     expect(isBuiltinSkillName("sakti-archive")).toBe(true);
@@ -55,7 +55,7 @@ describe("BUILTIN_SKILL_NAMES", () => {
   it("is exactly the 5 phase skills", () => {
     expect(BUILTIN_SKILL_NAMES).toEqual([
       "sakti-plan",
-      "sakti-design",
+      "sakti-specify",
       "sakti-build",
       "sakti-verify",
       "sakti-archive",

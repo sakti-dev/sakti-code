@@ -9,7 +9,7 @@
  */
 export const BUILTIN_SKILL_NAMES = [
   "sakti-plan",
-  "sakti-design",
+  "sakti-specify",
   "sakti-build",
   "sakti-verify",
   "sakti-archive",
@@ -28,13 +28,13 @@ export function isBuiltinSkillName(name: string): boolean {
  * builtin skill that should be force-injected at run start. Returns
  * `undefined` when no skill applies (unknown phase).
  *
- * Accepts both phase names (plan, design, build, verify, archive) and the
+ * Accepts both phase names (plan, specify, build, verify, archive) and the
  * underlying session status values (specifying, building, review, merged).
  */
 const PHASE_TO_SKILL: Readonly<Record<string, BuiltinSkillName>> = {
   plan: "sakti-plan",
-  design: "sakti-design",
-  specifying: "sakti-design",
+  specify: "sakti-specify",
+  specifying: "sakti-specify",
   build: "sakti-build",
   building: "sakti-build",
   verify: "sakti-verify",

@@ -126,7 +126,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     name: "plan",
     mode: "primary",
     description:
-      "PM-style planning agent for scoping work before implementation. Calls ask(kind=session) to hand off to a mission session.",
+      "PM-style planning agent for scoping work before implementation. Follows the sakti-plan skill for workflow and handoff.",
     systemPrompt: PLAN_PROMPT,
     permission: planRuleset(),
     activeToolNames: [

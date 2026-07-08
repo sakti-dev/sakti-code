@@ -29,8 +29,8 @@ export function resolveAgentByName(name: string, loadedAgents: AgentDefinition[]
  * `mission` kind in the `review` status → verify agent (edit-denied), and
  * all other mission statuses (specifying, building, merged) → build agent.
  *
- * The "specifying → build" routing is intentional: the design phase uses the
- * sakti-design skill (force-injected at run start) to keep the agent on-task
+ * The "specifying → build" routing is intentional: the specify phase uses the
+ * sakti-specify skill (force-injected at run start) to keep the agent on-task
  * instead of a structurally edit-denied spec agent. Edit-denial is preserved
  * for verify (where bias reduction matters most).
  *

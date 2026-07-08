@@ -30,7 +30,7 @@ describe("runner skill injection (unit)", () => {
 
   it("maps all 5 phases to their skills", () => {
     expect(getBuiltinSkillForPhase("plan")).toBe("sakti-plan");
-    expect(getBuiltinSkillForPhase("specifying")).toBe("sakti-design");
+    expect(getBuiltinSkillForPhase("specifying")).toBe("sakti-specify");
     expect(getBuiltinSkillForPhase("building")).toBe("sakti-build");
     expect(getBuiltinSkillForPhase("review")).toBe("sakti-verify");
     expect(getBuiltinSkillForPhase("merged")).toBe("sakti-archive");

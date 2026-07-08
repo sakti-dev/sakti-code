@@ -1,9 +1,9 @@
 ---
-name: sakti-design
-description: "Phase 2 deep technical design. Use when a change has completed phase 1 (planning) and needs deep technical design before implementation. Runs brainstorming, produces technical-design.md, enriches tasks.md with implementation details, and writes spec patches if gaps are discovered."
+name: sakti-specify
+description: "Specify phase. Use when a change has completed planning and needs detailed specification before implementation. Runs brainstorming (full workflow) or autonomous solutioning (hotfix), produces design.md + tasks.md, writes spec deltas when needed."
 ---
 
-# Sakti Design
+# Sakti Specify
 
 ## Overview
 
