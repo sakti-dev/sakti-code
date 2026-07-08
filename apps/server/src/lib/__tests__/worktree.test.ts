@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
@@ -8,6 +8,7 @@ import {
   detectDefaultBranch,
   preflightWorktree,
   removeMissionWorktree,
+  worktreePathFor,
 } from "../worktree.ts";
 
 function initGitRepo(dir: string): void {
@@ -22,6 +23,7 @@ describe("worktree ops", () => {
 
   beforeEach(() => {
     projectDir = mkdtempSync(join(tmpdir(), "sakti-wt-"));
+    process.env.SAKTI_AGENT_DIR = join(projectDir, "agent");
   });
 
   afterEach(() => {
@@ -32,6 +34,7 @@ describe("worktree ops", () => {
       // ignore
     }
     rmSync(projectDir, { recursive: true, force: true });
+    delete process.env.SAKTI_AGENT_DIR;
   });
 
   describe("detectDefaultBranch", () => {
@@ -58,13 +61,38 @@ describe("worktree ops", () => {
     });
   });
 
+  describe("worktreePathFor", () => {
+    it("returns <base>/<projectBasename>--<changeName>", () => {
+      expect(worktreePathFor("/tmp/base", "/home/u/code/myapp", "pid1", "add-thing")).toBe(
+        "/tmp/base/myapp--add-thing",
+      );
+    });
+
+    it("appends --<projectId[:8]> when the primary path already exists", () => {
+      const base = mkdtempSync(join(tmpdir(), "sakti-wp-"));
+      const projectCwd = "/home/u/code/myapp";
+      // Pre-create the primary path so it collides.
+      mkdirSync(join(base, "myapp--dupe"), { recursive: true });
+      const p = worktreePathFor(base, projectCwd, "abcdefgh12345678", "dupe");
+      expect(p).toBe(join(base, "myapp--dupe--abcdefgh"));
+      rmSync(base, { recursive: true, force: true });
+    });
+
+    it("does not append a suffix when there is no collision", () => {
+      const base = mkdtempSync(join(tmpdir(), "sakti-wp2-"));
+      const p = worktreePathFor(base, "/home/u/code/myapp", "pid1", "clean");
+      expect(p).toBe(join(base, "myapp--clean"));
+      rmSync(base, { recursive: true, force: true });
+    });
+  });
+
   describe("createMissionWorktree + removeMissionWorktree", () => {
-    it("creates a worktree at <projectDir>-worktrees/<changeName> and a sakti/<changeName> branch", () => {
+    it("creates a worktree under <base>/<projectBasename>--<changeName> and a sakti/<changeName> branch", () => {
       initGitRepo(projectDir);
-      const wtPath = createMissionWorktree(projectDir, "add-feature");
+      const wtPath = createMissionWorktree(projectDir, "proj-test001", "add-feature");
       expect(existsSync(wtPath)).toBe(true);
       expect(wtPath).toContain("add-feature");
-      expect(wtPath).toContain("-worktrees");
+      expect(wtPath).toContain("--add-feature");
       // The branch exists in the worktree.
       const branch = execSync("git branch --list sakti/add-feature", {
         cwd: projectDir,
@@ -75,9 +103,9 @@ describe("worktree ops", () => {
 
     it("removeMissionWorktree removes the dir but keeps the branch", () => {
       initGitRepo(projectDir);
-      const wtPath = createMissionWorktree(projectDir, "add-feature");
-      removeMissionWorktree(projectDir, "add-feature");
-      expect(existsSync(wtPath)).toBe(false);
+      const wt = createMissionWorktree(projectDir, "proj-test001", "add-feature");
+      removeMissionWorktree(projectDir, wt);
+      expect(existsSync(wt)).toBe(false);
       const branch = execSync("git branch --list sakti/add-feature", {
         cwd: projectDir,
         shell: "/bin/sh",
@@ -90,12 +118,12 @@ describe("worktree ops", () => {
       // the same change name must not hard-fail on `worktree add -b` (duplicate
       // branch). It should re-checkout the existing branch.
       initGitRepo(projectDir);
-      const wtPath = createMissionWorktree(projectDir, "recycle");
-      removeMissionWorktree(projectDir, "recycle");
+      const wt = createMissionWorktree(projectDir, "proj-test001", "recycle");
+      removeMissionWorktree(projectDir, wt);
       // Second creation with the surviving branch — must not throw.
-      const wtPath2 = createMissionWorktree(projectDir, "recycle");
-      expect(existsSync(wtPath2)).toBe(true);
-      expect(wtPath2).toBe(wtPath);
+      const wt2 = createMissionWorktree(projectDir, "proj-test001", "recycle");
+      expect(existsSync(wt2)).toBe(true);
+      expect(wt2).toBe(wt);
     });
   });
 });
