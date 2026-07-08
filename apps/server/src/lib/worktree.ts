@@ -88,6 +88,23 @@ function branchExists(cwd: string, branch: string): boolean {
   }
 }
 
+/** Does the mission branch `sakti/<changeName>` exist for the repo at `cwd`? */
+export function missionBranchExists(projectCwd: string, changeName: string): boolean {
+  return branchExists(projectCwd, `sakti/${changeName}`);
+}
+
+/**
+ * Delete a mission branch created during a failed graduation. Never call this
+ * for branches that existed before the current graduation attempt.
+ */
+export function deleteMissionBranch(projectCwd: string, changeName: string): void {
+  try {
+    git(projectCwd, `branch -D sakti/${changeName}`);
+  } catch {
+    // Best-effort; the branch may already be gone.
+  }
+}
+
 /**
  * Create a git worktree + branch for a mission. Returns the absolute worktree
  * path. Throws on failure (caller decides how to surface).
@@ -110,7 +127,7 @@ export function createMissionWorktree(
   }
   const wtPath = worktreePathFor(base, projectCwd, projectId, changeName);
   const branch = `sakti/${changeName}`;
-  if (branchExists(projectCwd, branch)) {
+  if (missionBranchExists(projectCwd, changeName)) {
     git(projectCwd, `worktree add "${wtPath}" ${branch}`);
   } else {
     const detected = detectDefaultBranch(projectCwd);

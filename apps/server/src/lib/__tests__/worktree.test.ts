@@ -15,8 +15,10 @@ import {
   absorbChangeContent,
   cleanMainChangeDir,
   createMissionWorktree,
+  deleteMissionBranch,
   detectDefaultBranch,
   linkDependencyDirs,
+  missionBranchExists,
   preflightWorktree,
   removeMissionWorktree,
   worktreePathFor,
@@ -220,6 +222,18 @@ describe("worktree ops", () => {
       mkdirSync(join(wt, "target"), { recursive: true });
       linkDependencyDirs(projectDir, wt, ["target"]);
       expect(lstatSync(join(wt, "target")).isSymbolicLink()).toBe(false);
+    });
+  });
+
+  describe("mission branch helpers", () => {
+    it("reports and deletes mission branches by change name", () => {
+      initGitRepo(projectDir);
+      expect(missionBranchExists(projectDir, "cleanup")).toBe(false);
+      const wt = createMissionWorktree(projectDir, "proj-test001", "cleanup");
+      expect(missionBranchExists(projectDir, "cleanup")).toBe(true);
+      removeMissionWorktree(projectDir, wt);
+      deleteMissionBranch(projectDir, "cleanup");
+      expect(missionBranchExists(projectDir, "cleanup")).toBe(false);
     });
   });
 });
