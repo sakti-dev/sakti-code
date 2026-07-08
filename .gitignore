@@ -9,6 +9,7 @@ release/
 .turbo/
 artifacts/
 openspec/references/
+openspec-legacy/references/
 *.tsbuildinfo
 .direnv/
 *.db*

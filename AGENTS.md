@@ -25,6 +25,22 @@ sakti-code: desktop app (Electron + SolidJS) running multiple AI coding agents c
 - DB: **node:sqlite + Drizzle ORM**. DB is owned by the app/server, never by the agent package.
 - Package manager / tooling is **pnpm** (not Bun runtime, not npm/yarn). `.ts` executed directly via `tsx`/`vite`/`vitest`.
 
+## Sakti (Spec-Driven Development)
+
+This project uses `@sakti-code/sakti` for spec-driven development. The sakti CLI manages specs and changes in `.sakti/`.
+
+```bash
+node packages/sakti/dist/cli.mjs --help
+node packages/sakti/dist/cli.mjs list --specs           # list all specs
+node packages/sakti/dist/cli.mjs list                    # list active changes
+node packages/sakti/dist/cli.mjs new change <name>       # start a new change
+node packages/sakti/dist/cli.mjs archive <name>          # complete and archive
+node packages/sakti/dist/cli.mjs validate --specs        # validate all specs
+node packages/sakti/dist/cli.mjs doctor                  # health check
+```
+
+Main specs live at `.sakti/specs/<capability>/spec.md`. Active changes at `.sakti/changes/<name>/`. Archived changes at `.sakti/changes/archive/`.
+
 ## Monorepo layout
 
 - `packages/agent/` — pure agent loop, types, compaction, coding-agent policy layer (system-prompt composition, prompt preprocessor, builtin agents, auto-compaction, retry). **No persistence, no DB, no app config.** Storage via `SessionStore` interface; model + API key injected by caller.
@@ -32,7 +48,8 @@ sakti-code: desktop app (Electron + SolidJS) running multiple AI coding agents c
 - `packages/tools/` — coding tools (read, write, edit, bash, grep, find). `read` also handles directory listings; the old `ls` tool was removed.
 - `apps/server/` — Hono REST server. Route modules are `factory.createApp()` sub-apps with `.basePath()`, composed via chained `.route()` in `buildApp(ctx)`. Context injected via `ctxMiddleware` (`c.var.ctx`); routes access it through `getCtx(c)`. UI consumes via Hono RPC (`hcWithType<App>`).
 - `apps/desktop/` — Electron shell (electron-vite + electron-builder). `src/` is SolidJS/Vite renderer, `electron/{main,preload,shared}` is the shell. Main embeds the Hono server in-process (`createServer`); renderer is **same-origin** (no CORS, no `window.sakti` for API). Preload sandboxed (`contextBridge` exposes only `window.sakti`).
-- `openspec/` — change specs + Pi reference implementation under `references/`.
+- `.sakti/` — specs and changes managed by `@sakti-code/sakti` CLI (sakti spec-driven development).
+- `openspec-legacy/` — historical archive of the previous `openspec/` directory (Pi reference implementation under `references/`).
 
 ## Commands
 
@@ -60,7 +77,7 @@ nix develop                 # dev shell: Electron runtime libs + python3/gnumake
 - **`exactOptionalPropertyTypes: true`** — use conditional spread `...(x !== undefined ? { x } : {})` instead of passing `undefined`.
 - TS 7.0 (Go-based): `include`/`references` must be top-level in tsconfig; `shell` in `execSync` must be a `string` (e.g. `"/bin/sh"`).
 - Workspace `package.json` exports point to `./src/index.ts` (not `./dist/`) so dev tooling resolves `.ts` directly.
-- Before editing unfamiliar code: read `openspec/changes/*/specs/` and the file you're changing.
+- Before editing unfamiliar code: read `.sakti/changes/*/specs/` and the file you're changing.
 
 ## Code style (Oxlint / Oxfmt via `vp`)
 

@@ -2,10 +2,10 @@ import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   fmt: {
-    ignorePatterns: ["openspec/**"],
+    ignorePatterns: ["openspec-legacy/**", ".sakti/**"],
   },
   lint: {
-    ignorePatterns: ["openspec/**"],
+    ignorePatterns: ["openspec-legacy/**", ".sakti/**"],
     options: {
       typeAware: true,
       typeCheck: true,
@@ -18,7 +18,7 @@ export default defineConfig({
     cache: true,
   },
   test: {
-    exclude: ["**/node_modules/**", "**/dist/**", "openspec/**", ".direnv/**"],
+    exclude: ["**/node_modules/**", "**/dist/**", "openspec-legacy/**", ".sakti/**", ".direnv/**"],
   },
   staged: {
     "*": "vp check --fix",
