@@ -33,11 +33,10 @@ describe("transition table", () => {
 
   it("getEdge throws on an unknown edge", () => {
     expect(() => getEdge("build", "archive")).toThrow();
-    // archive is not a valid source for any edge
-    expect(() => getEdge("archive", "specify")).toThrow();
+    expect(() => getEdge("done", "specify")).toThrow();
   });
 
-  it("exposes exactly the five designed edges", () => {
+  it("exposes exactly the six designed edges", () => {
     const keys = allEdges().map((e) => `${e.from}->${e.to}`);
     expect(keys.sort()).toEqual(
       [
@@ -46,6 +45,7 @@ describe("transition table", () => {
         "build->verify",
         "verify->build",
         "verify->archive",
+        "archive->done",
       ].sort(),
     );
   });
@@ -53,23 +53,45 @@ describe("transition table", () => {
   it("every edge declares the status it flips the session to (or graduation)", () => {
     const planMission = getEdge("plan", "mission");
     expect(planMission.requiresGraduation).toBe(true);
-    expect(getEdge("specify", "build").statusTarget).toBe("building");
-    expect(getEdge("build", "verify").statusTarget).toBe("review");
-    expect(getEdge("verify", "build").statusTarget).toBe("building");
-    expect(getEdge("verify", "archive").statusTarget).toBe("merged");
+    expect(getEdge("specify", "build").statusTarget).toBe("build");
+    expect(getEdge("build", "verify").statusTarget).toBe("verify");
+    expect(getEdge("verify", "build").statusTarget).toBe("build");
+    expect(getEdge("verify", "archive").statusTarget).toBe("archive");
+    expect(getEdge("archive", "done").statusTarget).toBe("done");
   });
 });
 
 describe("phaseFromSession", () => {
   it("maps a plan session to the plan phase", () => {
-    expect(phaseFromSession({ kind: "plan", status: "specifying" })).toBe("plan");
+    expect(phaseFromSession({ kind: "plan", status: "specify" })).toBe("plan");
   });
 
   it("maps mission statuses to phases", () => {
-    expect(phaseFromSession({ kind: "mission", status: "specifying" })).toBe("specify");
-    expect(phaseFromSession({ kind: "mission", status: "building" })).toBe("build");
-    expect(phaseFromSession({ kind: "mission", status: "review" })).toBe("verify");
-    expect(phaseFromSession({ kind: "mission", status: "merged" })).toBe("archive");
+    expect(phaseFromSession({ kind: "mission", status: "specify" })).toBe("specify");
+    expect(phaseFromSession({ kind: "mission", status: "build" })).toBe("build");
+    expect(phaseFromSession({ kind: "mission", status: "verify" })).toBe("verify");
+    expect(phaseFromSession({ kind: "mission", status: "archive" })).toBe("archive");
+  });
+
+  it("phaseFromSession is identity for mission statuses", () => {
+    expect(phaseFromSession({ kind: "mission", status: "specify" })).toBe("specify");
+    expect(phaseFromSession({ kind: "mission", status: "build" })).toBe("build");
+    expect(phaseFromSession({ kind: "mission", status: "verify" })).toBe("verify");
+    expect(phaseFromSession({ kind: "mission", status: "archive" })).toBe("archive");
+    expect(phaseFromSession({ kind: "mission", status: "done" })).toBe("done");
+  });
+
+  it("has an archive->done gate edge with worktree teardown", () => {
+    expect(hasEdge("archive", "done")).toBe(true);
+    const edge = getEdge("archive", "done");
+    expect(edge.mode).toBe("gate");
+    expect(edge.statusTarget).toBe("done");
+    expect(edge.requiresWorktreeTeardown).toBe(true);
+  });
+
+  it("plan->mission edge declares requiresWorktreeCreate", () => {
+    const edge = getEdge("plan", "mission");
+    expect(edge.requiresWorktreeCreate).toBe(true);
   });
 
   it("phaseFromSession throws for an unknown status on a mission", () => {

@@ -16,7 +16,7 @@
  * Gate-vs-auto is NOT the agent's concern — it lives here.
  */
 
-export type Phase = "plan" | "specify" | "build" | "verify" | "archive" | "mission";
+export type Phase = "plan" | "specify" | "build" | "verify" | "archive" | "done" | "mission";
 
 export type Mode = "gate" | "auto";
 
@@ -28,6 +28,10 @@ export interface TransitionEdge {
   requiresForcedObserve?: boolean;
   /** Graduate the plan transcript into the project OM. plan→mission only. */
   requiresGraduation?: boolean;
+  /** Create a mission worktree at plan→mission graduation. plan→mission only. */
+  requiresWorktreeCreate?: boolean;
+  /** Remove the mission worktree at archive→done teardown. archive→done only. */
+  requiresWorktreeTeardown?: boolean;
   /** Status to flip the session to (the DB `status` column value). */
   statusTarget?: string;
   /** The `<instruction>` block delivered to the next phase. */
@@ -44,6 +48,7 @@ const TABLE: Record<string, TransitionEdge> = {
     to: "mission",
     mode: "gate",
     requiresGraduation: true,
+    requiresWorktreeCreate: true,
     // Delivered by embedding in the mission's handoff user message (mission
     // start has no preceding transition call to produce a tool result).
     instruction: instruction(
@@ -54,7 +59,7 @@ const TABLE: Record<string, TransitionEdge> = {
     from: "specify",
     to: "build",
     mode: "gate",
-    statusTarget: "building",
+    statusTarget: "build",
     instruction: instruction(
       'You are now in build mode. Read design.md + tasks.md and implement the change with TDD (failing test first, then minimal implementation, then commit). Check off each task in tasks.md as it lands. When every task is checked AND the project\'s full test suite passes, call transition({to:"verify"}) with a completion summary. Follow the sakti-build skill.',
     ),
@@ -64,7 +69,7 @@ const TABLE: Record<string, TransitionEdge> = {
     to: "verify",
     mode: "auto",
     requiresForcedObserve: true,
-    statusTarget: "review",
+    statusTarget: "verify",
     instruction: instruction(
       'You are now in verify mode. Review the work for completeness, correctness, and coherence against design.md + specs + tasks.md. You are edit-denied — do not fix issues yourself; if you find any, write a fixing plan and call transition({to:"build"}) carrying it. Only call transition({to:"archive"}) if the work is genuinely clean. Follow the sakti-verify skill.',
     ),
@@ -73,7 +78,7 @@ const TABLE: Record<string, TransitionEdge> = {
     from: "verify",
     to: "build",
     mode: "auto",
-    statusTarget: "building",
+    statusTarget: "build",
     instruction: instruction(
       'You are now back in build mode. Read the fixing plan from the transition call above and address every issue it lists. Then re-run the project\'s full test suite and call transition({to:"verify"}) again only when tests pass. Do not skip to a final review — the verify agent rejected the previous completion for concrete reasons. Follow the sakti-build skill.',
     ),
@@ -82,11 +87,19 @@ const TABLE: Record<string, TransitionEdge> = {
     from: "verify",
     to: "archive",
     mode: "gate",
-    statusTarget: "merged",
-    // Archive is terminal; the archive skill guides the rest.
+    statusTarget: "archive",
     instruction: instruction(
-      "You are now in archive mode. Sync any delta specs into the main specs, then move this change into the archive. Follow the sakti-archive skill.",
+      'You are now in archive mode. Sync any delta specs into the main specs, then move this change into the archive. When done, call transition({to:"done"}) so the user can finish and clean up the worktree. Follow the sakti-archive skill.',
     ),
+  },
+  "archive->done": {
+    from: "archive",
+    to: "done",
+    mode: "gate",
+    requiresWorktreeTeardown: true,
+    statusTarget: "done",
+    // Terminal — no agent runs after done.
+    instruction: instruction("Archive complete."),
   },
 };
 
@@ -115,21 +128,23 @@ export function hasEdge(from: Phase, to: Phase): boolean {
 
 /**
  * Derive the current phase from a session's DB state. Plan sessions are always
- * in the plan phase; missions map by status (specifying→specify,
- * building→build, review→verify, merged→archive). Used by the runner and the
- * confirm route to resolve the transition edge.
+ * in the plan phase; missions map status → phase 1:1 (status == phase after
+ * the rename). Used by the runner and the confirm route to resolve the
+ * transition edge.
  */
 export function phaseFromSession(session: { kind: string; status: string }): Phase {
   if (session.kind === "plan") return "plan";
   switch (session.status) {
-    case "specifying":
+    case "specify":
       return "specify";
-    case "building":
+    case "build":
       return "build";
-    case "review":
+    case "verify":
       return "verify";
-    case "merged":
+    case "archive":
       return "archive";
+    case "done":
+      return "done";
     default:
       throw new Error(
         `Unknown status "${session.status}" for session kind "${session.kind}" — cannot derive phase.`,
