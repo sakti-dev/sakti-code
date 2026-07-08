@@ -14,7 +14,7 @@
 
 > **After completing each package (all its capability specs), update this checklist by changing `[ ]` to `[x]` and noting the date/session.**
 
-- [ ] `@sakti-code/logger` — 8 capability specs
+- [x] `@sakti-code/logger` — 8 capability specs (2026-07-08)
 - [ ] `@sakti-code/sakti` — 11 capability specs
 - [ ] `@sakti-code/tools` — 10 capability specs
 - [ ] `@sakti-code/db` — 3 capability specs (update existing)
@@ -110,6 +110,10 @@ For each capability, write or update `openspec/specs/<capability>/spec.md`:
 - Source of truth is the code — if code behavior differs from existing spec, code wins
 - Preserve the existing spec's format conventions exactly
 - If a capability has no existing spec, create it with Purpose + Requirements sections
+- **Describe the contract from the caller's perspective** — use "the system SHALL", "the tool SHALL", "the logger SHALL", not "the `createXxx` function SHALL"
+- **No internal implementation function names in scenarios** — don't reference internal function names like `describeError`, `inferDomain`, `mergeContext`, `safeStringify`, factory names, etc. These are implementation details. Describe the behavior instead.
+- **No implementation logic in requirement descriptions** — describe WHAT (contract, output, side effects), not HOW (internal processing steps, regex patterns, data flow through functions)
+- Backtick formatting for parameter shapes and example values is OK — existing specs do this (e.g., `{ path, offset?, limit? }`)
 
 ### Step 6: Verify
 
