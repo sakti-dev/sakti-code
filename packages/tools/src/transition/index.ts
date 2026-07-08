@@ -10,6 +10,12 @@ const transitionSchema = Type.Object({
     description:
       "Context that travels with the transition — a mission brief (to: mission), a spec summary (to: build), a completion summary (to: verify), a fixing plan (to: build from verify), or a verify summary (to: archive). Always end your turn after calling transition.",
   }),
+  preserveUnrelated: Type.Optional(
+    Type.Literal("stash", {
+      description:
+        "For to='mission' only: explicitly stash unrelated dirty paths before opening the mission gate.",
+    }),
+  ),
 });
 
 export type TransitionToolInput = Static<typeof transitionSchema>;

@@ -15,7 +15,11 @@ import {
   type SearchOperations,
 } from "@sakti-code/tools";
 import { rgPath } from "@vscode/ripgrep";
-import { preflightWorktree } from "../../lib/worktree.ts";
+import {
+  analyzeWorktreeForMission,
+  preflightWorktree,
+  stashUnrelatedChanges,
+} from "../../lib/worktree.ts";
 import { resolveActiveChangeName } from "./resolve-change-name.ts";
 
 export interface ToolContext {
@@ -74,16 +78,54 @@ function wrapTransitionTool(ctx: ToolContext): AgentTool {
   return {
     ...base,
     async execute(...callArgs: Parameters<AgentTool["execute"]>) {
-      const args = callArgs[1] as { to?: unknown };
+      const args = callArgs[1] as { to?: unknown; body?: unknown; preserveUnrelated?: unknown };
       if (args.to === "mission") {
         const activeChange = resolveActiveChangeName(ctx.cwd);
-        const err = preflightWorktree(ctx.cwd, activeChange);
-        if (err) {
+        const analysis = analyzeWorktreeForMission(ctx.cwd, activeChange);
+        if (
+          !analysis.ok &&
+          analysis.code === "dirty-unrelated" &&
+          args.preserveUnrelated === "stash"
+        ) {
+          if (!activeChange) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: "Cannot transition to mission: no active change was found, so Sakti cannot safely preserve unrelated changes.",
+                },
+              ],
+              details: undefined,
+              terminate: false,
+            };
+          }
+          const stashRef = stashUnrelatedChanges(ctx.cwd, activeChange, analysis.unrelatedPaths);
+          const afterStashErr = preflightWorktree(ctx.cwd, activeChange);
+          if (afterStashErr) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `Cannot transition to mission after stashing unrelated changes${
+                    stashRef ? ` (${stashRef})` : ""
+                  }: ${afterStashErr}`,
+                },
+              ],
+              details: undefined,
+              terminate: false,
+            };
+          }
+        } else if (!analysis.ok) {
           return {
             content: [
               {
                 type: "text" as const,
-                text: `Cannot transition to mission: ${err} Fix this, then call transition({ to: "mission" }) again.`,
+                text:
+                  analysis.code === "dirty-unrelated"
+                    ? `Cannot transition to mission: ${analysis.message} To let Sakti stash unrelated work and continue, call transition({ to: "mission", body: ${JSON.stringify(
+                        typeof args.body === "string" ? args.body : "mission brief",
+                      )}, preserveUnrelated: "stash" }).`
+                    : `Cannot transition to mission: ${analysis.message} Fix this, then call transition({ to: "mission" }) again.`,
               },
             ],
             details: undefined,

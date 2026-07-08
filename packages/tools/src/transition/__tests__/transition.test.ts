@@ -43,4 +43,8 @@ describe("createTransitionTool", () => {
       expect(result.terminate).toBe(true);
     }
   });
+
+  it("accepts explicit preserveUnrelated stash intent", () => {
+    expect(tool.parameters.properties.preserveUnrelated).toBeDefined();
+  });
 });

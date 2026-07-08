@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import {
   absorbChangeContent,
+  analyzeWorktreeForMission,
   cleanMainChangeDir,
   createMissionWorktree,
   deleteMissionBranch,
@@ -24,6 +25,7 @@ import {
   preflightWorktree,
   removeMissionWorktree,
   resetMissionBranch,
+  stashUnrelatedChanges,
   worktreePathFor,
 } from "../worktree.ts";
 
@@ -119,6 +121,45 @@ describe("worktree ops", () => {
       initGitRepo(projectDir);
       writeFileSync(join(projectDir, "loose.txt"), "x");
       expect(preflightWorktree(projectDir, null)).not.toBeNull();
+    });
+  });
+
+  describe("analyzeWorktreeForMission", () => {
+    it("reports unrelated dirty paths separately from active change paths", () => {
+      initGitRepo(projectDir);
+      mkdirSync(join(projectDir, ".sakti/changes/add-feature"), { recursive: true });
+      writeFileSync(join(projectDir, ".sakti/changes/add-feature/proposal.md"), "# proposal\n");
+      mkdirSync(join(projectDir, "src"), { recursive: true });
+      writeFileSync(join(projectDir, "src/dirty.ts"), "dirty\n");
+
+      const result = analyzeWorktreeForMission(projectDir, "add-feature");
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.code).toBe("dirty-unrelated");
+        expect(result.unrelatedPaths).toContain("src/dirty.ts");
+        expect(result.allowedChangePaths).toContain(".sakti/changes/add-feature/proposal.md");
+      }
+    });
+
+    it("stashUnrelatedChanges stashes only unrelated paths and leaves active change content", () => {
+      initGitRepo(projectDir);
+      mkdirSync(join(projectDir, ".sakti/changes/add-feature"), { recursive: true });
+      writeFileSync(join(projectDir, ".sakti/changes/add-feature/proposal.md"), "# proposal\n");
+      mkdirSync(join(projectDir, "src"), { recursive: true });
+      writeFileSync(join(projectDir, "src/dirty.ts"), "dirty\n");
+
+      const stashRef = stashUnrelatedChanges(projectDir, "add-feature", ["src/dirty.ts"]);
+
+      expect(stashRef).not.toBeNull();
+      expect(existsSync(join(projectDir, "src/dirty.ts"))).toBe(false);
+      expect(existsSync(join(projectDir, ".sakti/changes/add-feature/proposal.md"))).toBe(true);
+      expect(
+        execSync("git stash list --format=%s -1", {
+          cwd: projectDir,
+          shell: "/bin/sh",
+        }).toString(),
+      ).toContain("sakti: preserve unrelated changes before mission add-feature");
     });
   });
 

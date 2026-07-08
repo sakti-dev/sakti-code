@@ -37,32 +37,60 @@ export function detectDefaultBranch(cwd: string): string | null {
   }
 }
 
-/**
- * Read-only pre-flight for worktree creation. Returns null if OK, or an
- * error message explaining what's wrong. Used by the transition tool wrapper
- * so failures surface to the agent (not swallowed).
- *
- * When `activeChangeName` is given, the working tree may be dirty ONLY under
- * `.sakti/changes/<change>/` (that dir is what graduation absorbs); anything
- * else means unrelated WIP that shouldn't be swept into a mission. With a null
- * change name, the tree must be fully clean.
- */
-export function preflightWorktree(cwd: string, activeChangeName: string | null): string | null {
-  // Use git itself to detect a repo — works inside linked worktrees, subdirs,
-  // and repos with a relocated gitdir where a `.git` entry may be absent.
+export type MissionWorktreePreflight =
+  | {
+      ok: true;
+      allowedChangePaths: string[];
+      unrelatedPaths: string[];
+    }
+  | {
+      ok: false;
+      code: "not-git-repo" | "missing-default-branch" | "dirty-unrelated";
+      message: string;
+      allowedChangePaths: string[];
+      unrelatedPaths: string[];
+    };
+
+function parsePorcelainPath(line: string): { checkPath: string; stashPaths: string[] } | null {
+  if (line.trim() === "") {
+    return null;
+  }
+  const filePath = line.slice(3).replace(/^"|"$/g, "");
+  const segs = filePath.split(" -> ");
+  if (segs.length > 1) {
+    const source = segs[0] ?? "";
+    const dest = segs[segs.length - 1] ?? "";
+    return { checkPath: dest, stashPaths: [source, dest].filter((p) => p !== "") };
+  }
+  return { checkPath: filePath, stashPaths: [filePath] };
+}
+
+export function analyzeWorktreeForMission(
+  cwd: string,
+  activeChangeName: string | null,
+): MissionWorktreePreflight {
   try {
     git(cwd, "rev-parse --is-inside-work-tree");
   } catch {
-    return `"${cwd}" is not a git repository. Initialize git (git init) before this mission can be isolated in a worktree.`;
+    return {
+      ok: false,
+      code: "not-git-repo",
+      message: `"${cwd}" is not a git repository. Initialize git (git init) before this mission can be isolated in a worktree.`,
+      allowedChangePaths: [],
+      unrelatedPaths: [],
+    };
   }
   const base = detectDefaultBranch(cwd);
   if (!base) {
-    return `Could not detect a default branch in "${cwd}". Ensure the repo has at least one commit on a branch.`;
+    return {
+      ok: false,
+      code: "missing-default-branch",
+      message: `Could not detect a default branch in "${cwd}". Ensure the repo has at least one commit on a branch.`,
+      allowedChangePaths: [],
+      unrelatedPaths: [],
+    };
   }
-  // Clean-graduation guardrail: the working tree may be dirty ONLY under the
-  // active change dir (which graduation absorbs). Anything else means the user
-  // has uncommitted work that shouldn't be swept into a mission.
-  let porcelain: string;
+  let porcelain = "";
   try {
     porcelain = execSync("git status --porcelain --untracked-files=all", {
       cwd,
@@ -73,19 +101,71 @@ export function preflightWorktree(cwd: string, activeChangeName: string | null):
     porcelain = "";
   }
   const allowedPrefix = activeChangeName ? `.sakti/changes/${activeChangeName}/` : null;
+  const allowedChangePaths: string[] = [];
+  const unrelatedPaths: string[] = [];
   for (const line of porcelain.split("\n")) {
-    if (line.trim() === "") continue;
-    // Format: "XY path" (path may be quoted). Strip the 2-char status + space.
-    const filePath = line.slice(3).replace(/^"|"$/g, "");
-    // Rename arrow: "a -> b" — check the destination.
-    const segs = filePath.split(" -> ");
-    const checkPath = segs[segs.length - 1] ?? filePath;
-    const allowed = allowedPrefix !== null ? checkPath.startsWith(allowedPrefix) : false;
-    if (!allowed) {
-      return `Working tree isn't clean (unexpected change: "${checkPath}"). Commit or stash your changes first, then call transition({ to: "mission" }) again.`;
+    const parsed = parsePorcelainPath(line);
+    if (!parsed) {
+      continue;
+    }
+    const allowed = allowedPrefix !== null ? parsed.checkPath.startsWith(allowedPrefix) : false;
+    if (allowed) {
+      allowedChangePaths.push(parsed.checkPath);
+    } else {
+      unrelatedPaths.push(...parsed.stashPaths);
     }
   }
-  return null;
+  if (unrelatedPaths.length > 0) {
+    const first = unrelatedPaths[0] ?? "unknown";
+    return {
+      ok: false,
+      code: "dirty-unrelated",
+      message: `Working tree isn't clean (unexpected change: "${first}").`,
+      allowedChangePaths,
+      unrelatedPaths: [...new Set(unrelatedPaths)],
+    };
+  }
+  return { ok: true, allowedChangePaths, unrelatedPaths: [] };
+}
+
+/**
+ * Read-only pre-flight for worktree creation. Returns null if OK, or an
+ * error message explaining what's wrong. Used by the transition tool wrapper
+ * and the confirm route so failures surface clearly.
+ *
+ * When `activeChangeName` is given, the working tree may be dirty ONLY under
+ * `.sakti/changes/<change>/` (that dir is what graduation absorbs); anything
+ * else means unrelated WIP that shouldn't be swept into a mission. With a null
+ * change name, the tree must be fully clean.
+ */
+export function preflightWorktree(cwd: string, activeChangeName: string | null): string | null {
+  const result = analyzeWorktreeForMission(cwd, activeChangeName);
+  if (result.ok) {
+    return null;
+  }
+  if (result.code === "dirty-unrelated") {
+    return `${result.message} Commit, stash, or call transition({ to: "mission", body: "...", preserveUnrelated: "stash" }) to let Sakti stash unrelated paths before retrying.`;
+  }
+  return result.message;
+}
+
+export function stashUnrelatedChanges(
+  projectCwd: string,
+  changeName: string,
+  paths: readonly string[],
+): string | null {
+  if (paths.length === 0) {
+    return null;
+  }
+  const quotedPaths = paths.map((p) => shellQuote(p)).join(" ");
+  git(
+    projectCwd,
+    `stash push --include-untracked -m ${shellQuote(
+      `sakti: preserve unrelated changes before mission ${changeName}`,
+    )} -- ${quotedPaths}`,
+  );
+  const ref = git(projectCwd, "stash list --format=%gd -1");
+  return ref === "" ? null : ref;
 }
 
 /**

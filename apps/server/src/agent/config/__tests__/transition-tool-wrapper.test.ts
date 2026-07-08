@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
@@ -66,5 +66,75 @@ describe("transition tool wrapper", () => {
         result.content[0].type === "text" &&
         result.content[0].text.toLowerCase(),
     ).toContain("clean");
+  });
+
+  it("mission transition with unrelated dirty paths returns actionable stash opt-in guidance", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "sakti-transition-dirty-"));
+    execSync("git init -b main", { cwd, shell: "/bin/sh" });
+    execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
+    execSync("git config user.name t", { cwd, shell: "/bin/sh" });
+    execSync("git commit --allow-empty -m init", { cwd, shell: "/bin/sh" });
+    mkdirSync(join(cwd, ".sakti/changes/add-feature"), { recursive: true });
+    writeFileSync(join(cwd, ".sakti/changes/add-feature/.sakti.yaml"), "name: add-feature\n");
+    writeFileSync(join(cwd, ".sakti/changes/add-feature/proposal.md"), "# proposal\n");
+    mkdirSync(join(cwd, "src"), { recursive: true });
+    writeFileSync(join(cwd, "src/dirty.ts"), "dirty\n");
+    try {
+      const tools = buildAgentTools(["transition"], { cwd } as never);
+      const tool = tools[0]!;
+
+      const result = await tool.execute(
+        {} as never,
+        {
+          to: "mission",
+          body: "brief",
+        } as never,
+      );
+
+      expect(result.terminate).toBe(false);
+      expect(result.content[0]?.type).toBe("text");
+      const txt = result.content[0];
+      expect(txt?.type === "text" ? txt.text : "").toContain('preserveUnrelated: "stash"');
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it("mission transition with preserveUnrelated stashes unrelated paths and proceeds", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "sakti-transition-stash-"));
+    execSync("git init -b main", { cwd, shell: "/bin/sh" });
+    execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
+    execSync("git config user.name t", { cwd, shell: "/bin/sh" });
+    execSync("git commit --allow-empty -m init", { cwd, shell: "/bin/sh" });
+    mkdirSync(join(cwd, ".sakti/changes/add-feature"), { recursive: true });
+    writeFileSync(join(cwd, ".sakti/changes/add-feature/.sakti.yaml"), "name: add-feature\n");
+    writeFileSync(join(cwd, ".sakti/changes/add-feature/proposal.md"), "# proposal\n");
+    mkdirSync(join(cwd, "src"), { recursive: true });
+    writeFileSync(join(cwd, "src/dirty.ts"), "dirty\n");
+    try {
+      const tools = buildAgentTools(["transition"], { cwd } as never);
+      const tool = tools[0]!;
+
+      const result = await tool.execute(
+        {} as never,
+        {
+          to: "mission",
+          body: "brief",
+          preserveUnrelated: "stash",
+        } as never,
+      );
+
+      expect(result.terminate).toBe(true);
+      expect(existsSync(join(cwd, "src/dirty.ts"))).toBe(false);
+      expect(existsSync(join(cwd, ".sakti/changes/add-feature/proposal.md"))).toBe(true);
+      expect(
+        execSync("git stash list --format=%s -1", {
+          cwd,
+          shell: "/bin/sh",
+        }).toString(),
+      ).toContain("sakti: preserve unrelated changes before mission add-feature");
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
   });
 });
