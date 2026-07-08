@@ -26,6 +26,28 @@ describe("sessions routes", () => {
     expect(list).toHaveLength(1);
   });
 
+  it("creates a mission linked to a change via changeName", async () => {
+    const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes]);
+    const project = await ctx.repos.projects.create("demo2", "/tmp/demo2");
+
+    const created = await app.request(
+      new Request("http://localhost:3001/api/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          projectId: project.id,
+          kind: "mission",
+          changeName: "add-phase-transition",
+        }),
+      }),
+    );
+    expect(created.status).toBe(200);
+    const session = await created.json();
+    expect(session.changeName).toBe("add-phase-transition");
+    // Persisted — survives a re-read.
+    expect(ctx.repos.sessions.findById(session.id)?.changeName).toBe("add-phase-transition");
+  });
+
   it("PATCH /api/sessions/:id updates profileId", async () => {
     const { app, ctx } = await makeApp([projectsRoutes, sessionsRoutes]);
     const project = await ctx.repos.projects.create("demo", "/tmp/demo-patch");

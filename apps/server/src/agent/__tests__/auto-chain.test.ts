@@ -1,4 +1,5 @@
 import { SqliteSessionStorage } from "@sakti-code/db";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { makeContext } from "../../__tests__/helpers.ts";
 import { clearRunsForTesting } from "../runner.ts";
@@ -192,6 +193,43 @@ describe("runAgentStream auto-chain across auto-edges", () => {
       await runAgentStream(ctx, session.id, "design this", storage, { send: () => {} });
       // Specify is interactive — no reminder loop, exactly one run.
       expect(calls).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("build reminder is progress-aware — reads real task counts from tasks.md", async () => {
+    const { ctx, db } = await makeContext();
+    // Use a real temp cwd with a .sakti/changes/<name>/tasks.md so the sakti
+    // library can resolve progress.
+    const cwd = `/tmp/progress-test-${Date.now()}`;
+    mkdirSync(`${cwd}/.sakti/changes/add-thing`, { recursive: true });
+    writeFileSync(
+      `${cwd}/.sakti/changes/add-thing/tasks.md`,
+      "## 1. Area\n\n- [x] 1.1 done\n- [x] 1.2 done\n- [ ] 1.3 todo\n- [ ] 1.4 todo\n",
+    );
+    const project = await ctx.repos.projects.create("progress", cwd);
+    const session = await ctx.repos.sessions.create(project.id, {
+      status: "building",
+      changeName: "add-thing",
+    });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    let messages: string[] = [];
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    spy.mockImplementation(async (_ctx: unknown, _sid: string, msg: string) => {
+      messages.push(msg);
+    });
+
+    try {
+      await runAgentStream(ctx, session.id, "go", storage, { send: () => {} });
+      // The stall reminder for build carries the real count: 2 of 4 unchecked.
+      const reminder = messages.find((m) => m.includes("<reminder"));
+      expect(reminder).toBeDefined();
+      expect(reminder).toContain("2 of 4 tasks still unchecked");
     } finally {
       spy.mockRestore();
     }

@@ -4,6 +4,8 @@ import {
   type SessionStorageShape,
 } from "@sakti-code/agent";
 import { SqliteSessionStorage } from "@sakti-code/db";
+import { getTaskProgressForChange, SAKTI_CHANGES_DIR } from "@sakti-code/sakti";
+import path from "node:path";
 import Type from "typebox";
 import type { ServerContext } from "../context.ts";
 import { getPermissionChannel } from "../lib/permission-channel.ts";
@@ -333,7 +335,7 @@ export async function runAgentStream(
       const phase = autonomousPhaseForSession(session);
       if (phase && stalls < MAX_REMINDERS) {
         stalls++;
-        currentMessage = buildReminder(phase);
+        currentMessage = await buildProgressAwareReminder(ctx, session, phase);
         continue;
       }
       return; // interactive phase, or stall cap reached — surface to the user
@@ -394,6 +396,34 @@ async function clearPendingTransition(ctx: ServerContext, sessionId: string): Pr
     });
   } catch {
     // Swallow — clearing is best-effort.
+  }
+}
+
+/**
+ * Build a phase-aware reminder, making it progress-aware for the build phase
+ * when the session is linked to a change (reads tasks.md via the sakti
+ * library). Falls back to phase-aware (no counts) when changeName is null, the
+ * change dir is missing, or tasks.md is unreadable — never crashes.
+ */
+async function buildProgressAwareReminder(
+  ctx: ServerContext,
+  session: { changeName: string | null; projectId: string },
+  phase: "build" | "verify",
+): Promise<string> {
+  if (phase !== "build" || !session.changeName) {
+    return buildReminder(phase);
+  }
+  try {
+    const project = ctx.repos.projects.findById(session.projectId);
+    if (!project) return buildReminder(phase);
+    const progress = await getTaskProgressForChange(
+      path.join(project.cwd, SAKTI_CHANGES_DIR),
+      session.changeName,
+      project.cwd,
+    );
+    return buildReminder(phase, progress);
+  } catch {
+    return buildReminder(phase);
   }
 }
 
