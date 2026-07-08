@@ -133,6 +133,8 @@ describe("transition tool wrapper", () => {
           shell: "/bin/sh",
         }).toString(),
       ).toContain("sakti: preserve unrelated changes before mission add-feature");
+      const text = result.content[0];
+      expect(text?.type === "text" ? text.text : "").toContain("stashed unrelated changes");
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

@@ -3,8 +3,18 @@ import { cpSync, existsSync, mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { getWorktreeBaseDir } from "./config-dirs.ts";
 
+const SAFE_CHANGE_NAME_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+
 function git(cwd: string, args: string): string {
   return execSync(`git ${args}`, { cwd, shell: "/bin/sh", encoding: "utf-8" }).trim();
+}
+
+function assertSafeChangeName(changeName: string): void {
+  if (!SAFE_CHANGE_NAME_RE.test(changeName)) {
+    throw new Error(
+      `Unsafe change name "${changeName}". Change names must be lowercase kebab-case.`,
+    );
+  }
 }
 
 /**
@@ -154,6 +164,7 @@ export function stashUnrelatedChanges(
   changeName: string,
   paths: readonly string[],
 ): string | null {
+  assertSafeChangeName(changeName);
   if (paths.length === 0) {
     return null;
   }
@@ -182,6 +193,7 @@ export function worktreePathFor(
   projectId: string,
   changeName: string,
 ): string {
+  assertSafeChangeName(changeName);
   const primary = join(base, `${basename(projectCwd)}--${changeName}`);
   if (existsSync(primary)) {
     return join(base, `${basename(projectCwd)}--${changeName}--${projectId.slice(0, 8)}`);
@@ -201,11 +213,13 @@ function branchExists(cwd: string, branch: string): boolean {
 
 /** Does the mission branch `sakti/<changeName>` exist for the repo at `cwd`? */
 export function missionBranchExists(projectCwd: string, changeName: string): boolean {
+  assertSafeChangeName(changeName);
   return branchExists(projectCwd, `sakti/${changeName}`);
 }
 
 /** Returns the current HEAD sha of `sakti/<changeName>`, or null if absent. */
 export function missionBranchHead(projectCwd: string, changeName: string): string | null {
+  assertSafeChangeName(changeName);
   try {
     return git(projectCwd, `rev-parse refs/heads/sakti/${changeName}`);
   } catch {
@@ -215,6 +229,7 @@ export function missionBranchHead(projectCwd: string, changeName: string): strin
 
 /** Force-reset `sakti/<changeName>` to the given commit (used for rollback). */
 export function resetMissionBranch(projectCwd: string, changeName: string, head: string): void {
+  assertSafeChangeName(changeName);
   git(projectCwd, `branch -f sakti/${changeName} ${shellQuote(head)}`);
 }
 
@@ -223,6 +238,7 @@ export function resetMissionBranch(projectCwd: string, changeName: string, head:
  * for branches that existed before the current graduation attempt.
  */
 export function deleteMissionBranch(projectCwd: string, changeName: string): void {
+  assertSafeChangeName(changeName);
   try {
     git(projectCwd, `branch -D sakti/${changeName}`);
   } catch {
@@ -243,6 +259,7 @@ export function createMissionWorktree(
   projectId: string,
   changeName: string,
 ): string {
+  assertSafeChangeName(changeName);
   const base = getWorktreeBaseDir();
   mkdirSync(base, { recursive: true });
   try {
@@ -287,6 +304,7 @@ export function removeMissionWorktree(projectCwd: string, wtPath: string): void 
  * a reused mission branch.
  */
 export function absorbChangeContent(projectCwd: string, wtPath: string, changeName: string): void {
+  assertSafeChangeName(changeName);
   const src = join(projectCwd, ".sakti", "changes", changeName);
   if (!existsSync(src)) return;
   const dest = join(wtPath, ".sakti", "changes", changeName);
@@ -295,7 +313,7 @@ export function absorbChangeContent(projectCwd: string, wtPath: string, changeNa
   git(wtPath, "add .sakti/changes");
   const staged = git(wtPath, "diff --cached --name-only");
   if (staged === "") return;
-  git(wtPath, `commit -m "sakti: begin change ${changeName}"`);
+  git(wtPath, `commit -m ${shellQuote(`sakti: begin change ${changeName}`)}`);
 }
 
 export type CleanMainChangeDirResult = "absent" | "removed-untracked" | "skipped-tracked";
@@ -316,6 +334,7 @@ export function cleanMainChangeDir(
   projectCwd: string,
   changeName: string,
 ): CleanMainChangeDirResult {
+  assertSafeChangeName(changeName);
   const dir = join(projectCwd, ".sakti", "changes", changeName);
   if (!existsSync(dir)) {
     return "absent";

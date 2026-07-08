@@ -79,6 +79,7 @@ function wrapTransitionTool(ctx: ToolContext): AgentTool {
     ...base,
     async execute(...callArgs: Parameters<AgentTool["execute"]>) {
       const args = callArgs[1] as { to?: unknown; body?: unknown; preserveUnrelated?: unknown };
+      let stashedRef: string | null = null;
       if (args.to === "mission") {
         const activeChange = resolveActiveChangeName(ctx.cwd);
         const analysis = analyzeWorktreeForMission(ctx.cwd, activeChange);
@@ -100,6 +101,7 @@ function wrapTransitionTool(ctx: ToolContext): AgentTool {
             };
           }
           const stashRef = stashUnrelatedChanges(ctx.cwd, activeChange, analysis.unrelatedPaths);
+          stashedRef = stashRef;
           const afterStashErr = preflightWorktree(ctx.cwd, activeChange);
           if (afterStashErr) {
             return {
@@ -133,7 +135,19 @@ function wrapTransitionTool(ctx: ToolContext): AgentTool {
           };
         }
       }
-      return base.execute(...(callArgs as Parameters<typeof base.execute>));
+      const result = await base.execute(...(callArgs as Parameters<typeof base.execute>));
+      if (stashedRef) {
+        return {
+          ...result,
+          content: [
+            {
+              type: "text" as const,
+              text: `Phase transition recorded; stashed unrelated changes as ${stashedRef}.`,
+            },
+          ],
+        };
+      }
+      return result;
     },
   };
 }

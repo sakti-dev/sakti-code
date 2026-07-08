@@ -43,4 +43,16 @@ describe("resolveActiveChangeName", () => {
     writeFileSync(join(changesDir, "README.md"), "not a change");
     expect(resolveActiveChangeName(cwd)).toBeNull();
   });
+
+  it("ignores unsafe change directory names even when they are newest", () => {
+    const changesDir = join(cwd, ".sakti/changes");
+    mkdirSync(join(changesDir, "safe-change"), { recursive: true });
+    writeFileSync(join(changesDir, "safe-change", ".sakti.yaml"), "name: safe-change\n");
+    mkdirSync(join(changesDir, "bad;name"), { recursive: true });
+    writeFileSync(join(changesDir, "bad;name", ".sakti.yaml"), "name: bad;name\n");
+    const future = new Date(Date.now() + 10_000);
+    utimesSync(join(changesDir, "bad;name", ".sakti.yaml"), future, future);
+
+    expect(resolveActiveChangeName(cwd)).toBe("safe-change");
+  });
 });

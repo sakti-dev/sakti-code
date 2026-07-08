@@ -194,29 +194,60 @@ export const wsResponseSchema = Type.Union([
   }),
 ]);
 
+interface TransitionToolArgs {
+  body: string;
+  to: string;
+}
+
+export type PendingTransitionToolCalls = Map<string, TransitionToolArgs>;
+
+function transitionResultTerminates(result: unknown): boolean {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    "terminate" in result &&
+    (result as { terminate?: unknown }).terminate === true
+  );
+}
+
 /**
- * Authoritative side-effect of a `transition` tool-call: persist the raw
- * {to, body} so a pending gate card survives reload, and so the runner can
- * resolve the edge (gate vs auto) and act. This does NOT resolve gating or
- * flip status — the runner owns mode resolution (it has the transition table
- * + can chain/auto-start). Records every transition call with a string `to`
- * + `body`; no-ops otherwise. Errors are logged, never thrown.
+ * Authoritative side-effect of a successful `transition` tool-call: persist the
+ * raw {to, body} so a pending gate card survives reload, and so the runner can
+ * resolve the edge (gate vs auto) and act. Start events only record args in
+ * memory; DB persistence waits for a matching successful terminating end event
+ * so rejected transitions do not surface stale gates. Errors are logged, never
+ * thrown.
  *
- * **Why fire-and-forget is safe:** `node:sqlite` writes are synchronous —
- * the SQL executes during the microtask, before the `await runPrompt(...)`
- * continuation runs. If the DB layer ever becomes async, this MUST be
- * awaited (the transition signal would be lost silently).
+ * **Why fire-and-forget is safe:** `node:sqlite` writes are synchronous — the
+ * SQL executes during the microtask, before the `await runPrompt(...)`
+ * continuation runs. If the DB layer ever becomes async, this MUST be awaited
+ * (the transition signal would be lost silently).
  */
 export async function persistTransitionSideEffect(
   ctx: ServerContext,
   sessionId: string,
   event: AgentHarnessEvent,
+  pendingTransitionToolCalls: PendingTransitionToolCalls,
 ): Promise<void> {
-  if (event.type !== "tool_execution_start" || event.toolName !== "transition") {
+  if (event.type !== "tool_execution_start" && event.type !== "tool_execution_end") {
     return;
   }
-  const args = event.args as { to?: unknown; body?: unknown };
-  if (typeof args.to !== "string" || typeof args.body !== "string") {
+  if (event.toolName !== "transition") {
+    return;
+  }
+  if (event.type === "tool_execution_start") {
+    const args = event.args as { to?: unknown; body?: unknown };
+    if (typeof args.to === "string" && typeof args.body === "string") {
+      pendingTransitionToolCalls.set(event.toolCallId, { to: args.to, body: args.body });
+    }
+    return;
+  }
+  if (event.type !== "tool_execution_end") {
+    return;
+  }
+  const args = pendingTransitionToolCalls.get(event.toolCallId);
+  pendingTransitionToolCalls.delete(event.toolCallId);
+  if (!args || event.isError || !transitionResultTerminates(event.result)) {
     return;
   }
   try {
@@ -288,6 +319,7 @@ export async function runAgentStream(
       turnId: turn.id,
       messageLength: currentMessage.length ?? 0,
     });
+    const pendingTransitionToolCalls: PendingTransitionToolCalls = new Map();
     try {
       await runPrompt(
         ctx,
@@ -304,7 +336,7 @@ export async function runAgentStream(
           // body} of a `transition` tool-call. The runner resolves gate/auto and
           // either chains (auto) or leaves it pending for the confirm route.
           // Fire-and-forget; the helper logs its own errors.
-          void persistTransitionSideEffect(ctx, sessionId, event);
+          void persistTransitionSideEffect(ctx, sessionId, event, pendingTransitionToolCalls);
         },
         (frame) => {
           ws.send({

@@ -322,6 +322,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
   it("plan→mission approve absorbs change content, cleans main, symlinks dependency dirs", async () => {
     const { app, ctx } = await makeApp([confirmRoutes]);
     const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-v2-"));
+    const stateDir = mkdtempSync(join(tmpdir(), "sakti-state-"));
     execSync("git init -b main", { cwd, shell: "/bin/sh" });
     execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
     execSync("git config user.name t", { cwd, shell: "/bin/sh" });
@@ -336,7 +337,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     });
     execSync(`mkdir -p ${cwd}/node_modules`, { shell: "/bin/sh" });
     execSync(`mkdir -p ${cwd}/.venv`, { shell: "/bin/sh" });
-    process.env.SAKTI_AGENT_DIR = join(cwd, "agent");
+    process.env.SAKTI_AGENT_DIR = join(stateDir, "agent");
 
     try {
       const project = await ctx.repos.projects.create("p", cwd);
@@ -376,12 +377,14 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     } finally {
       delete process.env.SAKTI_AGENT_DIR;
       rmSync(cwd, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
     }
   });
 
   it("plan→mission approve returns 500 if main gets dirty before approval", async () => {
     const { app, ctx } = await makeApp([confirmRoutes]);
     const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-dirty-"));
+    const stateDir = mkdtempSync(join(tmpdir(), "sakti-state-"));
     execSync("git init -b main", { cwd, shell: "/bin/sh" });
     execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
     execSync("git config user.name t", { cwd, shell: "/bin/sh" });
@@ -394,7 +397,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
       shell: "/bin/sh",
     });
     execSync(`echo "dirty" > ${cwd}/src/dirty.ts`, { shell: "/bin/sh" });
-    process.env.SAKTI_AGENT_DIR = join(cwd, "agent");
+    process.env.SAKTI_AGENT_DIR = join(stateDir, "agent");
 
     try {
       const project = await ctx.repos.projects.create("p", cwd);
@@ -421,12 +424,14 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     } finally {
       delete process.env.SAKTI_AGENT_DIR;
       rmSync(cwd, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
     }
   });
 
   it("plan→mission approve uses global dependency symlink override from settings.json", async () => {
     const { app, ctx } = await makeApp([confirmRoutes]);
     const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-deps-"));
+    const stateDir = mkdtempSync(join(tmpdir(), "sakti-state-"));
     execSync("git init -b main", { cwd, shell: "/bin/sh" });
     execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
     execSync("git config user.name t", { cwd, shell: "/bin/sh" });
@@ -443,7 +448,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     ctx.settingsFile.update({
       worktree: { dependencySymlinkDirs: ["custom-cache"] },
     });
-    process.env.SAKTI_AGENT_DIR = join(cwd, "agent");
+    process.env.SAKTI_AGENT_DIR = join(stateDir, "agent");
 
     try {
       const project = await ctx.repos.projects.create("p", cwd);
@@ -468,6 +473,7 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
     } finally {
       delete process.env.SAKTI_AGENT_DIR;
       rmSync(cwd, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
     }
   });
 

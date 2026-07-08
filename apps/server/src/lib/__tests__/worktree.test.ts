@@ -38,10 +38,12 @@ function initGitRepo(dir: string): void {
 
 describe("worktree ops", () => {
   let projectDir: string;
+  let stateDir: string;
 
   beforeEach(() => {
     projectDir = mkdtempSync(join(tmpdir(), "sakti-wt-"));
-    process.env.SAKTI_AGENT_DIR = join(projectDir, "agent");
+    stateDir = mkdtempSync(join(tmpdir(), "sakti-state-"));
+    process.env.SAKTI_AGENT_DIR = join(stateDir, "agent");
   });
 
   afterEach(() => {
@@ -52,6 +54,7 @@ describe("worktree ops", () => {
       // ignore
     }
     rmSync(projectDir, { recursive: true, force: true });
+    rmSync(stateDir, { recursive: true, force: true });
     delete process.env.SAKTI_AGENT_DIR;
   });
 
@@ -201,6 +204,14 @@ describe("worktree ops", () => {
   });
 
   describe("createMissionWorktree + removeMissionWorktree", () => {
+    it("rejects unsafe change names before shelling out to git", () => {
+      initGitRepo(projectDir);
+
+      expect(() => createMissionWorktree(projectDir, "proj-test001", "bad;name")).toThrow(
+        "Unsafe change name",
+      );
+    });
+
     it("creates a worktree under <base>/<projectBasename>--<changeName> and a sakti/<changeName> branch", () => {
       initGitRepo(projectDir);
       const wtPath = createMissionWorktree(projectDir, "proj-test001", "add-feature");
