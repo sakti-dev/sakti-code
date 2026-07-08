@@ -1,48 +1,101 @@
 ## Purpose
 
-The `SessionStore` interface decouples the agent loop from persistence. The agent calls `loadMessages`, `appendMessage`, and `replaceMessages` without knowing the storage backend.
+The session storage layer (`SessionStorageShape`) provides an Effect-native, tree-based persistence interface for the agent's session data. Each session is an append-only tree of typed entries (`SessionTreeEntry`), with a movable leaf pointer for branching and navigation. The agent package defines the interface and provides an in-memory implementation; `@sakti-code/db` implements it against SQLite. The agent package depends only on the interface, never on a specific backend.
 
 ## Requirements
 
-### Requirement: SessionStore defines the persistence interface
-The agent package SHALL define a `SessionStore` interface with methods: `loadMessages(sessionId)`, `appendMessage(sessionId, message)`, and `replaceMessages(sessionId, messages)`. The agent SHALL NOT depend on any specific storage implementation.
+### Requirement: SessionStorageShape defines the tree-based persistence interface
 
-#### Scenario: Agent uses SessionStore interface
-- **WHEN** the agent is constructed with a `SessionStore` implementation
-- **THEN** the agent calls `loadMessages()`, `appendMessage()`, and `replaceMessages()` on the provided store, without knowing whether it's SQLite, in-memory, or remote
+The system SHALL define a `SessionStorageShape` interface with the following Effect-typed methods: `appendEntry`, `createEntryId`, `findEntries`, `getEntries`, `getEntry`, `getLabel`, `getLeafId`, `getMetadata`, `getPathToRoot`, `setLeafId`. A `SessionStorage` Effect service wraps this shape for dependency injection. The agent SHALL NOT depend on any specific storage implementation.
 
-### Requirement: loadMessages returns ordered message history
-`loadMessages(sessionId)` SHALL return an array of `AgentMessage` objects ordered by insertion time (oldest first). These messages form the context sent to the LLM.
+#### Scenario: Agent uses SessionStorageShape interface
+- **WHEN** the agent is constructed with a `SessionStorageShape` implementation
+- **THEN** the agent calls methods on the provided shape, without knowing whether it's in-memory, SQLite-backed, or remote
 
-#### Scenario: Loading messages for a new session
-- **WHEN** `loadMessages()` is called for a session with 5 messages
-- **THEN** it returns all 5 messages in chronological order
+### Requirement: SessionTreeEntry is a discriminated union of entry types
 
-#### Scenario: Loading messages for an empty session
-- **WHEN** `loadMessages()` is called for a session with no messages
-- **THEN** it returns an empty array
+The system SHALL define `SessionTreeEntry` as a discriminated union on `type`, including: `message`, `thinking_level_change`, `model_change`, `active_tools_change`, `branch_summary`, `custom`, `custom_message`, `label`, `session_info`, `leaf`, `observation_prune`, `observation`, `reflection`. Each entry has `id`, `parentId`, and `timestamp`.
 
-### Requirement: appendMessage persists a single message
-`appendMessage(sessionId, message)` SHALL persist one `AgentMessage` to the store. Each call represents one message in the conversation (user, assistant, or tool result). The message SHALL be assigned a unique ID and timestamp by the store.
+#### Scenario: Messages are stored as MessageEntry
+- **WHEN** an agent message is appended to the session
+- **THEN** it is stored as a `message` entry carrying the full `AgentMessage` (role, content, usage, stopReason, etc.)
 
-#### Scenario: Appending a user message
-- **WHEN** `appendMessage("session-1", userMessage)` is called
-- **THEN** the message is persisted with a unique ID and the current timestamp
+#### Scenario: Branch navigation creates leaf entries
+- **WHEN** the leaf pointer is moved to a different entry
+- **THEN** a `leaf` entry is appended recording the old and new leaf IDs
 
-#### Scenario: Appending a tool result
-- **WHEN** `appendMessage("session-1", toolResultMessage)` is called
-- **THEN** the tool result (including tool call ID, tool name, arguments, and result content) is persisted
+#### Scenario: Observational memory entries are persisted
+- **WHEN** the observer or reflector produces output
+- **THEN** `observation` and `reflection` entries are appended with their summaries and record IDs
 
-### Requirement: replaceMessages atomically swaps message history
-`replaceMessages(sessionId, messages)` SHALL atomically replace all messages for a session. Used by compaction to swap old messages for a summary + recent messages. The operation SHALL be transactional — either all messages are replaced or none are.
+### Requirement: appendEntry adds entries and advances the leaf
 
-#### Scenario: Compaction replaces messages
-- **WHEN** `replaceMessages("session-1", [summary, recentMsg1, recentMsg2])` is called after compaction
-- **THEN** the session's message history contains only the summary and recent messages — old messages are gone
+The system SHALL append a `SessionTreeEntry` to the storage. Each call adds the entry to the end of the list. For non-`leaf` entries, the leaf pointer advances to the new entry's ID. For `leaf` entries, the leaf pointer moves to the `targetId`.
 
-### Requirement: SessionStore types are defined in the agent package
-The agent package SHALL export the `SessionStore` interface and any related types (e.g., `StoredMessage`) so that `packages/db` can implement the interface without circular dependencies.
+#### Scenario: Appending a message entry
+- **WHEN** `appendEntry(messageEntry)` is called
+- **THEN** the entry is added and the leaf advances to the entry's ID
 
-#### Scenario: db package imports SessionStore type
-- **WHEN** `packages/db` imports `SessionStore` from `@sakti-code/agent`
-- **THEN** it can implement the interface without importing anything else from the agent package
+#### Scenario: Appending a leaf entry
+- **WHEN** `appendEntry({ type: "leaf", targetId: "abc" })` is called
+- **THEN** the entry is added and the leaf moves to `"abc"`
+
+### Requirement: setLeafId creates a leaf entry atomically
+
+The system SHALL create a `leaf` entry linking the current leaf to the target, and move the leaf pointer to the target. If the target entry does not exist, the system SHALL fail with a `not_found` error.
+
+#### Scenario: Move leaf to existing entry
+- **WHEN** `setLeafId("entry-5")` is called and `"entry-5"` exists
+- **THEN** a new leaf entry is created and the leaf pointer becomes `"entry-5"`
+
+#### Scenario: Move leaf to nonexistent entry
+- **WHEN** `setLeafId("nonexistent")` is called
+- **THEN** the operation fails with `code: "not_found"`
+
+### Requirement: getPathToRoot returns the branch from leaf to root
+
+The system SHALL return entries from the leaf (or the given `leafId`) walking up to the root (the entry with `parentId: null`). Entries are ordered root-first. If the given `leafId` is null, returns an empty array.
+
+#### Scenario: Path from leaf to root
+- **WHEN** `getPathToRoot(null)` is called (uses current leaf)
+- **THEN** entries are returned root-first, leaf-last
+
+#### Scenario: Nonexistent entry in path
+- **WHEN** a parentId points to a nonexistent entry
+- **THEN** the operation fails with `code: "invalid_session"`
+
+### Requirement: findEntries filters by entry type
+
+The system SHALL return all entries matching a specific `type`, narrowing the return type to the corresponding entry variant.
+
+#### Scenario: Find all message entries
+- **WHEN** `findEntries("message")` is called
+- **THEN** only entries with `type: "message"` are returned, typed as `MessageEntry[]`
+
+### Requirement: getLabel returns the label for an entry
+
+The system SHALL return the most recent label assigned to a given entry ID via `label` entries. If no label exists, returns `undefined`.
+
+#### Scenario: Entry has a label
+- **WHEN** `getLabel("entry-5")` is called and a `label` entry targets `"entry-5"`
+- **THEN** the label string is returned
+
+#### Scenario: Entry has no label
+- **WHEN** `getLabel("entry-5")` is called and no `label` entry targets it
+- **THEN** `undefined` is returned
+
+### Requirement: InMemorySessionStorageLive provides a test implementation
+
+The system SHALL provide `InMemorySessionStorageLive` as an Effect Layer that constructs an in-memory `SessionStorageShape`. It accepts optional initial entries and metadata. Entry IDs are generated from truncated UUIDv7. It is used for testing and for ephemeral session contexts.
+
+#### Scenario: In-memory store with initial entries
+- **WHEN** `InMemorySessionStorageLive({ entries, metadata })` is built
+- **THEN** the resulting service has the provided entries pre-loaded and the metadata set
+
+### Requirement: SessionMetadata tracks creation identity
+
+The system SHALL define `SessionMetadata` with `id` (UUID) and `createdAt` (ISO timestamp). These are immutable after creation.
+
+#### Scenario: Metadata is available
+- **WHEN** `getMetadata()` is called
+- **THEN** the session's `id` and `createdAt` are returned

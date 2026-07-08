@@ -1,265 +1,181 @@
 ## Purpose
 
-The agent loop is the core execution engine: it sends prompts to an LLM, streams responses, executes tool calls, retries errors, and manages compaction. It persists messages via a `SessionStore` interface and supports abort via `AbortSignal`.
+The agent loop is the core execution engine: it sends prompts to an LLM via `@sakti-code/llm`'s `stream()`, streams token deltas, executes tool calls with permission checks, and emits lifecycle events. It uses Effect internally and exposes both async and Effect-native APIs. The loop is embedded in the `AgentHarness` which adds session tree management, branching, hooks, and resource lifecycle.
 
 ## Requirements
 
-### Requirement: Agent loop streams LLM responses
-The agent SHALL accept a prompt message, send it to the LLM via `@earendil-works/pi-ai`'s `streamSimple()`, and yield streaming events (`text_delta`, `thinking_delta`, `toolcall_start`, `toolcall_delta`, `toolcall_end`, `done`, `error`) as an async iterable. The persisted `AssistantMessage` SHALL be the message pi-ai reports — pi-ai's stream contract terminates with a `done` event carrying the final `AssistantMessage` (`event.message`) or an `error` event carrying the final `AssistantMessage` (`event.error`, with `stopReason: "error"|"aborted"` and `errorMessage`). The streaming layer SHALL treat that pi-ai message as the source of truth and map ALL its fields onto our `AssistantMessage` (content, usage, timestamp, `stopReason`, `errorMessage`, and attribution: `api`, `provider`, `model`, `responseModel`, `responseId`, `diagnostics`) — it SHALL NOT cherry-pick a subset or synthesize a message for the error case. This mirrors pi's `messages.push(await response.result())` pattern (`agent-loop.ts:345-369`), where the `done` and `error` cases are handled identically. `AssistantMessage.stopReason`/`errorMessage` are optional in our type only because pre-change DB rows lack them; newly written messages SHALL always carry `stopReason`.
+### Requirement: Agent loop streams LLM responses via @ai-sdk fullStream
 
-#### Scenario: Successful turn preserves the whole pi-ai message
-- **WHEN** the agent receives a prompt and the LLM responds with plain text (no tool calls)
-- **THEN** the agent yields `text_delta` events followed by a `done` event, and the final `AssistantMessage` carries `content`, `usage`, `timestamp`, `stopReason` (the value pi-ai reported, e.g. `"stop"`), and any attribution fields pi-ai reported — not a cherry-picked subset
+The system SHALL accept a prompt message (or continue from existing context), convert `AgentMessage[]` to LLM `Message[]` at the call boundary via `convertToLlm`, call the stream function (`@sakti-code/llm`'s `stream`), and consume `fullStream` parts natively. It SHALL accumulate `text-delta`, `reasoning-delta`, and `tool-call` parts into an `AssistantMessage`, emitting per-token `message_update` events.
+
+#### Scenario: Successful turn emits text deltas
+- **WHEN** the LLM responds with text content
+- **THEN** the loop emits `message_update` events with `kind: "text"` for each token delta, followed by `message_end` with the complete assistant message
+
+#### Scenario: LLM response includes thinking
+- **WHEN** the LLM produces reasoning content
+- **THEN** the loop emits `message_update` events with `kind: "thinking"` and the final `AssistantMessage` contains a `ThinkingContent` block with the accumulated thinking text
 
 #### Scenario: LLM response includes tool calls
-- **WHEN** the agent receives a prompt and the LLM responds with one or more tool calls
-- **THEN** the agent yields `toolcall_start`, `toolcall_delta`, and `toolcall_end` events for each tool call, then enters the tool execution phase
+- **WHEN** the LLM returns tool call blocks
+- **THEN** the loop accumulates tool calls and enters the tool execution phase after `message_end`
 
-#### Scenario: Errored turn uses pi-ai's error message verbatim
-- **WHEN** the LLM stream terminates with an `error` event (e.g. billing limit, invalid request)
-- **THEN** the final `AssistantMessage` is pi-ai's `event.error` message (carrying `stopReason: "error"`, the real `errorMessage`, zeroed usage) — the streaming layer SHALL NOT synthesize one
-
-#### Scenario: Aborted turn uses pi-ai's aborted message verbatim
-- **WHEN** the LLM stream terminates because the caller's abort signal fired
-- **THEN** the final `AssistantMessage` is pi-ai's `event.error` message carrying `stopReason: "aborted"`
-
-#### Scenario: stopReason is preserved for downstream use
-- **WHEN** a turn completes (success, error, or abort)
-- **THEN** the final `AssistantMessage` carries its `stopReason` so downstream code (compaction token estimate, retry decisions, attribution) can distinguish successful turns from errored/aborted ones
-
-### Requirement: Agent loop executes tool calls
-The agent SHALL execute tool calls returned by the LLM, append tool results as messages, and re-send to the LLM for the next turn. This continues until the LLM responds without tool calls or a tool result sets `terminate: true`.
-
-#### Scenario: Single tool call followed by text response
-- **WHEN** the LLM returns one tool call and the tool executes successfully
-- **THEN** the agent appends the tool result message, sends to the LLM again, and yields the text response events
-
-#### Scenario: Multiple tool calls in parallel
-- **WHEN** the LLM returns multiple tool calls and tool execution mode is `parallel`
-- **THEN** the agent executes all tool calls concurrently, appends all results, and sends them together to the LLM
-
-#### Scenario: Multiple tool calls in sequence
-- **WHEN** the LLM returns multiple tool calls and tool execution mode is `sequential`
-- **THEN** the agent executes tool calls one at a time, appending each result before the next
-
-#### Scenario: Tool execution fails
-- **WHEN** a tool call throws an error or returns `isError: true`
-- **THEN** the agent appends the error as a tool result message and continues the loop (sends to LLM for recovery)
-
-#### Scenario: Tool result sets terminate flag
-- **WHEN** a tool result includes `terminate: true`
-- **THEN** the agent stops the loop after all pending tool results are collected, without sending back to the LLM
-
-### Requirement: Agent loop reports tool execution progress
-The agent SHALL yield `tool_execution_start`, `tool_execution_update`, and `tool_execution_end` events during tool execution, allowing the UI to show progress.
-
-#### Scenario: Tool emits partial updates
-- **WHEN** a tool calls its `onUpdate` callback with partial result text
-- **THEN** the agent yields a `tool_execution_update` event with the accumulated partial result
-
-### Requirement: Agent loop persists messages via SessionStore
-The agent SHALL call `store.appendMessage()` for every new message (user prompt, assistant response, tool results, steer messages, follow-up messages) as they are produced during the loop.
-
-#### Scenario: Messages are persisted as they are produced
-- **WHEN** the agent loop processes a turn with multiple tool calls
-- **THEN** each user message, assistant message (on done), and tool result message is appended to the store immediately
-
-#### Scenario: Steer message is persisted as user message
-- **WHEN** a steer message is injected into the loop
-- **THEN** it is appended to the store as a user message with role `"user"` and the steer text as content
-
-### Requirement: Errored and aborted turns are persisted as assistant messages
-When the LLM stream terminates with an `error` event (provider error or caller abort), the agent loop SHALL take the pi-ai `event.error` `AssistantMessage` (which carries `stopReason: "error"` or `"aborted"` respectively and the `errorMessage`), push it onto the working message array, and persist it via `store.appendMessage()` before terminating the loop — matching pi's `agent-loop.ts:196`. The agent SHALL still yield the `error` event so live consumers receive the immediate signal. The persisted `stopReason` SHALL survive a reload (round-tripped through the message store) so that a subsequent resume/continue sees the failure and `estimateContextTokens` can skip it. No message is synthesized: the persisted message is the one pi-ai reported.
-
-#### Scenario: Errored turn persists the pi-ai error message
-- **WHEN** the LLM stream yields an `error` event (e.g. billing limit) during a turn
-- **THEN** the loop appends pi-ai's error `AssistantMessage` (with `stopReason: "error"` and the real `errorMessage"`) to the session store, and it survives a reload
-
-#### Scenario: Aborted turn persists the pi-ai aborted message
-- **WHEN** the caller's abort signal fires mid-stream and pi-ai terminates with `stopReason: "aborted"`
-- **THEN** the loop appends pi-ai's aborted `AssistantMessage` (with `stopReason: "aborted"`) to the session store
-
-#### Scenario: The error event is still emitted live
-- **WHEN** a turn errors or is aborted
-- **THEN** the loop yields the `error` event (as before) in addition to persisting the assistant message — live UI consumers are unaffected
-
-#### Scenario: No message is synthesized
-- **WHEN** a turn errors or is aborted
-- **THEN** the persisted assistant message is pi-ai's reported message (with its real `stopReason`, `errorMessage`, and zeroed usage), not a hand-constructed placeholder
-
-### Requirement: Agent loop supports compaction
-The agent SHALL check at the top of each turn (before sending to the LLM) whether the context window is near capacity, using `shouldCompact(estimateContextTokens(messages), model.contextWindow, reserveTokens)`. `estimateContextTokens` prefers the provider-reported `usage.totalTokens` from the most recent assistant message whose `stopReason` is neither `"error"` nor `"aborted"` — matching pi's `getAssistantUsage` (`compaction.ts:144-152`: `if (stopReason !== "aborted" && stopReason !== "error" && usage) return usage`), which skips stale/garbage usage from failed or aborted turns. It falls back to a char/4 estimate over all messages when no usable assistant usage is available — e.g. the first turn, or a history consisting only of error/aborted turns. When the check trips **and** `autoCompaction` is enabled in the agent config, the agent SHALL summarize old messages via the existing `compactMessages()` utility (reusing the same `model`, `reserveTokens`, and `keepRecentTokens` as the manual compaction route), splice the returned message list into the working message array, and call `store.replaceMessages()` to persist the compacted history. The agent SHALL yield `compaction_start` before summarization and `compaction_end` (carrying `tokensBefore` and `tokensAfter`) after. When `autoCompaction` is disabled (the default), the check SHALL be skipped entirely. Manual compaction via `POST /api/sessions/:id/compact` remains available regardless of this setting.
-
-#### Scenario: Context window approaching limit triggers compaction
-- **WHEN** `autoCompaction` is enabled and `estimateTokens(messages)` exceeds `model.contextWindow - reserveTokens` (default reserve: 16,000)
-- **THEN** the agent yields `compaction_start`, summarizes the oldest messages (keeping ~`keepRecentTokens` of recent context, default 20,000), calls `store.replaceMessages()` with the compacted list, and yields `compaction_end` with `tokensBefore` and `tokensAfter`
-
-#### Scenario: Context window not near limit
-- **WHEN** `autoCompaction` is enabled but the total tokens are within budget
-- **THEN** no compaction occurs and the loop continues to `turn_start` normally
-
-#### Scenario: Auto-compaction disabled by default
-- **WHEN** `autoCompaction` is not set (the default) or is `false`, regardless of token count
-- **THEN** no compaction check runs, no `compaction_*` events are yielded, and the loop proceeds turn-by-turn as before
-
-#### Scenario: Compaction check position
-- **WHEN** a turn begins
-- **THEN** the compaction check runs after processing any queued steer messages but before the `turn_start` event
-
-#### Scenario: Token estimate skips an errored or aborted turn
-- **WHEN** the most recent assistant message has `stopReason: "error"` or `"aborted"`, and an earlier successful assistant message has usable usage
-- **THEN** `estimateContextTokens` uses the earlier message's usage (plus a trailing estimate), NOT the stale/garbage usage of the failed turn
-
-### Requirement: Auto-compaction resolves its API key via the runner
-The summarization LLM call requires a provider API key. Because the agent package is pure (no environment or DB access), the key SHALL be supplied via `AgentConfig.apiKey`, resolved by the runner using the same provider-resolution logic as the manual compaction route (`getEnvApiKey(provider)` from the project's model config). When `autoCompaction` is enabled but no API key is available, the agent SHALL skip compaction silently for that turn (no event, no error) and continue the loop; the next turn re-evaluates. A failed or aborted summarization SHALL NOT terminate the loop — `compactMessages` returns the original messages unchanged in that case, and the loop continues with the un-compacted context.
-
-#### Scenario: Missing API key is skipped gracefully
-- **WHEN** `autoCompaction` is enabled, the context window threshold is exceeded, but `AgentConfig.apiKey` is absent or empty
-- **THEN** the loop continues to `turn_start` without yielding any `compaction_*` event and without throwing
-
-#### Scenario: Summarization failure does not break the loop
-- **WHEN** `autoCompaction` is enabled and the summarization LLM call returns `stopReason: "error"` or is aborted
-- **THEN** `compactMessages` returns the original message list unchanged, the loop continues normally, and no `error` event is emitted for the summarization failure
-
-#### Scenario: API key plumbed through config
-- **WHEN** `runPrompt` constructs the agent loop for a session whose project has a provider configured with an env API key
-- **THEN** `createAgentLoop` receives `apiKey` derived from `getEnvApiKey(provider)`, and `AgentConfig.apiKey` is populated
-
-### Requirement: Agent loop retries retryable errors
-The agent SHALL catch retryable LLM errors (HTTP 429, 5xx) and retry with exponential backoff (base delay × 2^(attempt-1)). Max retries default to 3. Context overflow errors SHALL NOT be retried (handled by compaction instead).
-
-#### Scenario: Rate limit triggers retry
-- **WHEN** the LLM returns HTTP 429
-- **THEN** the agent waits with exponential backoff and retries the LLM call up to 3 times, yielding retry events for each attempt
-
-#### Scenario: Max retries exceeded
-- **WHEN** the LLM fails 3 consecutive times with retryable errors
-- **THEN** the agent yields an `error` event and stops the loop
-
-#### Scenario: Context overflow is not retried
-- **WHEN** the LLM returns a context window overflow error
-- **THEN** the agent triggers compaction instead of retrying
+#### Scenario: LLM stream error produces error-valued message
+- **WHEN** the LLM stream encounters an error (network failure, parse error)
+- **THEN** the final `AssistantMessage` has `stopReason: "error"` and `errorMessage` set to the error's message
 
 ### Requirement: Agent loop emits lifecycle events
-The agent SHALL yield `agent_start`, `turn_start`, `message_start`, `message_update`, `message_end`, `turn_end`, and `agent_end` events to provide full observability of the loop's lifecycle.
+
+The system SHALL emit typed `AgentEvent`s throughout the loop lifecycle: `agent_start`, `turn_start`, `message_start`/`message_end` (bracketing every persisted message), `message_update` (per-token deltas), `tool_execution_start`/`tool_execution_update`/`tool_execution_end`, `turn_end`, `agent_end`, and `cache_shape` (per-turn prefix diagnostics).
 
 #### Scenario: Full turn lifecycle
-- **WHEN** the agent processes a prompt that results in one tool call and a final text response
-- **THEN** the agent yields events in order: `agent_start` → `turn_start` → `message_start` → (streaming events) → `message_end` → `tool_execution_start` → `tool_execution_end` → `turn_start` → `message_start` → (streaming events) → `message_end` → `turn_end` → `agent_end`
+- **WHEN** a prompt produces one tool call and a final text response
+- **THEN** events are emitted: `agent_start` → `turn_start` → `message_start`/`message_end` (prompt) → `message_start` → (streaming deltas) → `message_end` → `tool_execution_start` → `tool_execution_end` → `message_start`/`message_end` (tool result) → `turn_end` → `turn_start` → `message_start` → (streaming deltas) → `message_end` → `turn_end` → `agent_end`
 
-### Requirement: Agent supports abort
-The agent SHALL support cancellation via an `AbortSignal`. When aborted, the agent SHALL stop the current LLM stream, cancel pending tool executions, and yield an `agent_end` event.
+#### Scenario: Message lifecycle brackets every message
+- **WHEN** any message enters the working transcript (user prompt, steer, tool result, assistant)
+- **THEN** it is bracketed by `message_start` and `message_end` events carrying the message payload
 
-#### Scenario: Abort during LLM streaming
-- **WHEN** the abort signal fires while the LLM is streaming
-- **THEN** the agent stops consuming the LLM stream and yields `agent_end`
+### Requirement: Agent loop executes tool calls with permission evaluation
 
-#### Scenario: Abort during tool execution
-- **WHEN** the abort signal fires while a tool is executing
-- **THEN** the agent cancels the tool execution and yields `agent_end`
+The system SHALL execute tool calls returned by the LLM. Before execution, each tool call goes through: argument preparation (`prepareArguments`), validation, permission evaluation, and `beforeToolCall` hook. After execution, the `afterToolCall` hook runs. Tool results are persisted as `ToolResultMessage` entries.
 
-### Requirement: Agent configuration
-The agent SHALL accept a configuration object (`AgentConfig`) specifying: model, tools, session store, tool execution mode (sequential/parallel), retry settings (max retries, base delay), compaction settings (reserve tokens, keep-recent tokens), thinking level, auto-retry toggle, and steering mode.
+#### Scenario: Tool found and executed successfully
+- **WHEN** the LLM calls a registered tool and the tool returns a result
+- **THEN** the result is emitted as `tool_execution_end` and persisted as a `toolResult` message
 
-#### Scenario: Configuration with custom settings
-- **WHEN** an agent is created with `toolExecutionMode: "parallel"`, `maxRetries: 5`, and `thinkingLevel: "high"`
-- **THEN** the agent uses parallel tool execution, retries up to 5 times, and passes thinking level to the LLM
+#### Scenario: Tool not found returns error
+- **WHEN** the LLM calls a tool name that is not registered
+- **THEN** an error tool result is returned with `"Tool <name> not found"` and the loop continues
 
-### Requirement: Steer/followUp on AgentLoop interface
-The `AgentLoop` interface SHALL gain `steer(message: string): void` and `followUp(message: string): void` methods. These methods SHALL queue messages for injection into the active prompt stream. Calling these methods on an inactive loop (after prompt has returned) SHALL be a no-op.
+#### Scenario: Permission denied blocks execution
+- **WHEN** permission evaluation returns `"deny"` for a tool call
+- **THEN** the tool is not executed; an error result with `"Permission denied"` is returned
 
-#### Scenario: steer is available on AgentLoop
-- **WHEN** a client calls `loop.steer("Try X instead")` during an active prompt
-- **THEN** the method returns immediately (non-blocking) and the message is queued
+#### Scenario: beforeToolCall blocks execution
+- **WHEN** the `beforeToolCall` hook returns `{ block: true, reason: "..." }`
+- **THEN** the tool is not executed; an error result with the reason is returned
 
-#### Scenario: steer on inactive loop is no-op
-- **WHEN** a client calls `loop.steer("...")` after the prompt generator has completed
-- **THEN** no error is thrown and the message is silently dropped
+#### Scenario: afterToolCall patches the result
+- **WHEN** the `afterToolCall` hook returns a modified result
+- **THEN** the patched result (content, isError, terminate) replaces the original
 
-### Requirement: AgentConfig gains thinkingLevel field
-The `AgentConfig` interface SHALL gain an optional `thinkingLevel: string` field. When present, `streamLLMResponse` SHALL pass it to `streamSimple` in the streaming options. When absent, no thinking level is passed (default behavior).
+#### Scenario: Tool execution error is captured as error result
+- **WHEN** a tool's `execute` throws
+- **THEN** the error message is captured as an error tool result and the loop continues
 
-#### Scenario: thinkingLevel passed through config
-- **WHEN** `AgentConfig` has `thinkingLevel: "high"` and the loop sends to the LLM
-- **THEN** `streamSimple` receives `{ thinkingLevel: "high" }` in its options parameter
+### Requirement: Tool execution supports sequential and parallel modes
 
-### Requirement: AgentConfigInput gains settings overrides
-The `AgentConfigInput` interface SHALL gain optional `autoRetry: boolean` and `steeringMode: string` fields. When present, these override the corresponding default behaviors in `createAgentConfig`. The `maxRetries` field already exists but was not exposed per-session — it SHALL now be settable per-session.
+The system SHALL execute tool calls in sequential mode when `config.toolExecution === "sequential"` or when any tool in the batch has `executionMode: "sequential"`. Otherwise, tools execute in parallel via Effect `FiberSet`. Single-tool batches run identically in both modes.
 
-#### Scenario: autoRetry false disables retries
-- **WHEN** `AgentConfigInput` has `autoRetry: false` and the LLM returns a retryable error
-- **THEN** the loop yields an `error` event immediately without retrying
+#### Scenario: Sequential execution
+- **WHEN** `toolExecution: "sequential"` and 2+ tool calls are returned
+- **THEN** tools execute one at a time, in order, with each result finalized before the next starts
 
-#### Scenario: steeringMode one-at-a-time processes steers before each turn
-- **WHEN** `steeringMode: "one-at-a-time"` is set and one steer is queued
-- **THEN** the steer is processed at the next turn start, and subsequent steers are deferred until that turn completes
+#### Scenario: Parallel execution
+- **WHEN** `toolExecution: "parallel"` and 2+ tool calls with no sequential tools
+- **THEN** all tools are forked concurrently and results are finalized in source order
 
-### Requirement: Per-session auto_compaction setting is persisted and inert pending auto-compaction
-The `auto_compaction` setting (`session:{id}:auto_compaction`, default `"false"`) SHALL be readable and writable via the settings routes and loaded by `runPrompt` at loop construction. It is persisted correctly and round-trips. Automatic turn-level compaction is NOT yet implemented in the loop; the setting is forward-compatible scaffolding consumed by the dedicated `agent-auto-compaction` change. Manual compaction via `POST /api/sessions/:id/compact` remains available regardless of this setting.
+#### Scenario: One sequential tool forces sequential batch
+- **WHEN** a batch contains 3 tools where one has `executionMode: "sequential"`
+- **THEN** the entire batch runs sequentially
 
-#### Scenario: auto_compaction default is false
-- **WHEN** a session has no stored `auto_compaction` setting
-- **THEN** `loadSessionSettings` returns `auto_compaction: "false"`
+#### Scenario: Abort breaks the tool batch
+- **WHEN** the abort signal fires during a sequential batch after tool 2 completes
+- **THEN** tool 3 is not executed; tools 1 and 2 results are kept
 
-#### Scenario: setting round-trips
-- **WHEN** `PATCH /api/sessions/:id/settings { auto_compaction: true }` then `GET /api/sessions/:id/settings`
-- **THEN** the response has `auto_compaction: true`
+### Requirement: Tool-batch termination uses AND semantics
 
-#### Scenario: no compaction events are ever yielded
-- **WHEN** `auto_compaction` is enabled or disabled and tokens exceed the context window threshold
-- **THEN** the loop continues without yielding any `compaction_start`/`compaction_end` events (the gate exists but the feature behind it is implemented in `agent-auto-compaction`)
+The system SHALL terminate the turn only when every tool result in a batch has `terminate: true`. A batch where some tools terminate and others do not SHALL NOT terminate. An empty batch SHALL NOT terminate.
 
-### Requirement: Compaction cut-point never orphans a tool result
-When `compactMessages()` selects the boundary between messages to summarize and messages to keep (`recentMessages = messages.slice(cutIndex)`), the selected `cutIndex` SHALL NOT point at a `tool` message. After the keep-recent-budget walk-back determines a raw cut index, the implementation SHALL advance `cutIndex` forward past any contiguous `tool` messages so that `recentMessages` always begins at a `user` or `assistant` boundary — matching pi's `findValidCutPoints` (`openspec/references/pi/packages/coding-agent/src/core/compaction/compaction.ts:300-318`), which excludes `toolResult` from the valid cut-point set, and its "closest valid cut point at or after `i`" selection (compaction.ts:~407-413). The equivalence is exact for our 3-role model: pi's valid cut-point set is `{user, assistant}` (it also accepts pi-specific roles bashExecution/custom/branchSummary/compactionSummary, which our model lacks), so "smallest valid cut point `>= i`" ≡ "smallest `j >= i` with `role !== "tool"`", which is precisely what the snap-forward computes; both algorithms also accumulate `tool`-message tokens in the budget walk (pi counts every `entry.type === "message"`, toolResult included), so they break at the same `i`. If advancement reaches the end of the message array (no valid cut point exists — the entire keep-window is `tool` messages, a malformed conversation), compaction SHALL keep all messages and perform no summarization, matching pi's `if (cutPoints.length === 0) return { firstKeptEntryIndex: startIndex, ... }` (compaction.ts:403). This keep-all-on-exhaustion SHALL be enforced by widening the existing `if (cutIndex <= 1)` guard to also fire when `cutIndex >= messages.length` — without that, an exhausted `cutIndex` (e.g. `messages.length` = 40) passes `<= 1` and produces `recentMessages = slice(40) = []` (summarize-all-keep-nothing). This guarantees the ship gate: **compaction never returns a `recentMessages` slice that starts with an orphaned tool result** (a tool result without its preceding assistant tool-call in the same window).
+#### Scenario: All tools terminate
+- **WHEN** all tools in a batch return `terminate: true`
+- **THEN** the loop terminates after the batch
 
-#### Scenario: Cut lands on a tool result is advanced past it
-- **WHEN** the keep-recent budget walk-back sets the raw `cutIndex` at a `tool` message, and a later message is a `user` or `assistant`
-- **THEN** `cutIndex` advances forward to that `user`/`assistant` message, and `recentMessages` does NOT start with a `tool` message
+#### Scenario: Mixed terminate flags
+- **WHEN** one tool returns `terminate: true` and another returns `terminate: false`
+- **THEN** the loop does NOT terminate
 
-#### Scenario: Tool result with its tool-call in the summarize window is not orphaned
-- **WHEN** an assistant tool-call and its `tool` result both fall in the summarize (old) window, and `recentMessages` begins at a later `user`/`assistant`
-- **THEN** the `tool` result is summarized alongside its tool-call (not promoted into `recentMessages` as an orphan)
+### Requirement: Agent loop converts messages at the LLM boundary
 
-#### Scenario: No valid cut point keeps everything
-- **WHEN** advancing `cutIndex` forward past `tool` messages reaches the end of the array (the entire keep-window is `tool` messages — no `user`/`assistant` exists at or after the raw cut)
-- **THEN** compaction keeps all messages and performs no summarization for that turn (returns `messages` unchanged), matching pi's `cutPoints.length === 0` → keep-all. The keep-all guard SHALL fire (`cutIndex >= messages.length`), NOT produce an empty `recentMessages`
+The system SHALL transform `AgentMessage[]` (the internal representation including custom types) to LLM `Message[]` only at the point of calling the stream function, via the configurable `convertToLlm` callback. This allows custom message types (`bashExecution`, `branchSummary`, `observation`, etc.) to be excluded or reformatted for the provider.
 
-#### Scenario: Normal cut at a user or assistant is unchanged
-- **WHEN** the raw `cutIndex` already points at a `user` or `assistant` message
-- **THEN** no advancement occurs and `recentMessages` is exactly `messages.slice(cutIndex)` as before
+#### Scenario: Custom messages excluded from LLM context
+- **WHEN** the context contains `bashExecution` and `branchSummary` messages
+- **THEN** `convertToLlm` filters them out before passing to the stream function
 
-### Requirement: Compaction serialization mirrors pi's serializeConversation
-The `messageToText` serializer that feeds the summarization LLM SHALL mirror pi's `serializeConversation` (`openspec/references/pi/packages/coding-agent/src/core/compaction/utils.ts:109-163`) field-for-field, including the details pi's code encodes. For each message:
-- `user` → `[User]: <content>` — emitted **only when content is non-empty** (pi `utils.ts:121`: `if (content) parts.push(...)`). Our `UserMessage.content` is always a `string`.
-- `assistant` → emit, **in this order and each only when non-empty**, whichever of `[Assistant thinking]: <thinkingParts.join("\n")>`, `[Assistant]: <textParts.join("\n")>`, `[Assistant tool calls]: <calls.join("; ")>` are present. Each tool call serializes as `${block.name}(${argsStr})` where `argsStr = Object.entries(args).map(([k,v]) => \`${k}=${JSON.stringify(v)}\`).join(", ")` — pi's exact arg format (`utils.ts:151-153`). When multiple sections are present for one assistant message, they SHALL be joined with `"\n\n"` (pi joins ALL parts, across and within messages, with `parts.join("\n\n")`, `utils.ts:163`).
-- `tool` → `[Tool result]: <truncateForSummary(content, TOOL_RESULT_MAX_CHARS)>` — emitted **only when content is non-empty** (pi `utils.ts:158`: `if (content) parts.push(...)`).
+### Requirement: Context transform runs before LLM call
 
-Tool results SHALL be truncated via `truncateForSummary` (`utils.ts:89-98`): when `content.length > TOOL_RESULT_MAX_CHARS`, emit `${content.slice(0, TOOL_RESULT_MAX_CHARS)}\n\n[... ${truncatedChars} more characters truncated]`; `TOOL_RESULT_MAX_CHARS` SHALL equal `2000`. pi calls `convertToLlm(currentMessages)` before serializing (compaction.ts:586-587) to map custom message types onto LLM roles; our model has only `user`/`assistant`/`tool` (no custom types), so `convertToLlm` is a no-op equivalent and is intentionally not replicated. This bounds the summarization prompt token cost and preserves assistant reasoning + tool-invocation context that the prior single-line `Assistant:` serializer dropped.
+The system SHALL apply `transformContext` (if configured) to the messages before conversion and streaming. This allows dynamic message rewriting at each turn.
 
-#### Scenario: Tool result over 2000 chars is truncated with the pi marker
-- **WHEN** a `tool` message's content exceeds 2000 characters
-- **THEN** the summarization text for that message is `content.slice(0, 2000)` followed by `\n\n[... <N> more characters truncated]` where N is the dropped character count — the full content is NOT serialized verbatim
+#### Scenario: Transform modifies context
+- **WHEN** `transformContext` is configured and returns modified messages
+- **THEN** the modified messages are converted and sent to the LLM
 
-#### Scenario: Tool result at or under 2000 chars is unchanged
-- **WHEN** a `tool` message's content is 2000 characters or fewer
-- **THEN** the summarization text serializes the full content with no truncation marker
+### Requirement: prepareNextTurn allows dynamic reconfiguration
 
-#### Scenario: Assistant thinking blocks are preserved in the summary text
-- **WHEN** an `assistant` message contains `thinking` content blocks
-- **THEN** the summarization text includes a `[Assistant thinking]: <…>` section (not dropped, as the prior serializer did)
+The system SHALL call `prepareNextTurn` after each turn completes. If it returns a snapshot with updated `model`, `thinkingLevel`, or `context`, those are applied for the next turn.
 
-#### Scenario: Assistant tool calls are preserved in the summary text
-- **WHEN** an `assistant` message contains `toolCall` content blocks
-- **THEN** the summarization text includes a `[Assistant tool calls]: <name>(k=v, …); …` section listing each call and its arguments (not dropped)
+#### Scenario: Model changed mid-session
+- **WHEN** `prepareNextTurn` returns `{ model: newModel }`
+- **THEN** subsequent turns use `newModel`
 
-#### Scenario: Assistant text-only message emits a single section
-- **WHEN** an `assistant` message contains only `text` content blocks (no thinking, no tool calls)
-- **THEN** the summarization text emits only `[Assistant]: <text>` — no empty thinking/toolcalls sections
+### Requirement: Steering and follow-up messages are injected between turns
 
-#### Scenario: Empty user or tool content produces no line
-- **WHEN** a `user` message has empty `content` (""), or a `tool` message's text content is empty
-- **THEN** the summarization text omits that message entirely (pi `if (content)` guard) — no `[User]: ` or `[Tool result]: ` line with empty trailing content
+The system SHALL drain `getSteeringMessages()` at the top of each turn and `getFollowUpMessages()` after the inner loop exhausts. Drained messages are emitted as `message_start`/`message_end` and added to context.
 
-#### Scenario: Multi-section assistant joins sections with double newline
-- **WHEN** an `assistant` message contains thinking AND text AND tool-call blocks
-- **THEN** the three sections appear in order (`[Assistant thinking]`, `[Assistant]`, `[Assistant tool calls]`) separated by `\n\n` (pi's `parts.join("\n\n")`), matching the separator used between distinct messages
+#### Scenario: Steer message processed at turn start
+- **WHEN** a steer message is queued and a new turn begins
+- **THEN** the steer is emitted as a message event and added to the context before the LLM call
+
+#### Scenario: Follow-up continues the outer loop
+- **WHEN** the inner loop completes and `getFollowUpMessages()` returns messages
+- **THEN** those messages become pending and a new turn starts
+
+### Requirement: Max steps limits total turns
+
+The system SHALL stop after `config.maxSteps` turns. On the last step, `toolChoice: "none"` is sent to prevent further tool calls, forcing a final text response.
+
+#### Scenario: Max steps reached
+- **WHEN** `maxSteps: 5` and 5 turns have completed
+- **THEN** the loop emits `agent_end` without starting a 6th turn
+
+### Requirement: Observational memory hooks run at turn boundaries
+
+The system SHALL call `observationalMemory.engine.maybeObserve()` and `maybeReflect()` at turn boundaries (after each turn's `shouldStopAfterTurn` check). Read-only observational memory blocks are injected as ephemeral user messages after the skill-pair position.
+
+#### Scenario: OM observe/reflect runs between turns
+- **WHEN** `observationalMemory` is configured and a turn completes
+- **THEN** `maybeObserve` and `maybeReflect` are called on the OM engine
+
+#### Scenario: Read-only OM blocks injected
+- **WHEN** `observationalMemoryReadOnly` returns observation blocks
+- **THEN** they are inserted as user messages after the skill-pair in the context
+
+### Requirement: Cache shape diagnostics emitted per turn
+
+The system SHALL capture the prefix shape of each LLM request and emit `cache_shape` events with diagnostics comparing consecutive shapes, enabling the UI to display prompt-cache utilization.
+
+#### Scenario: Cache shape event after turn
+- **WHEN** a turn completes its LLM call
+- **THEN** a `cache_shape` event is emitted with diagnostics about the prefix
+
+### Requirement: Error and abort produce stopReason on the message
+
+The system SHALL encode stream errors and aborts as `stopReason: "error"` or `"aborted"` on the final `AssistantMessage`, with the error message in `errorMessage`. These messages are returned normally (not thrown).
+
+#### Scenario: Aborted turn
+- **WHEN** the abort signal fires during an LLM stream
+- **THEN** the final assistant message has `stopReason: "aborted"` and the loop ends with `turn_end` + `agent_end`
+
+### Requirement: Both async and Effect-native APIs are provided
+
+The system SHALL export `runAgentLoop`/`runAgentLoopContinue` (async, returning `Promise<AgentMessage[]>`), `agentLoop`/`agentLoopContinue` (returning `AgentEventStream` — an async iterable with a `result()` promise), and `runAgentLoopEffect`/`runAgentLoopContinueEffect` (Effect-native).
+
+#### Scenario: AgentEventStream usage
+- **WHEN** `agentLoop(prompts, context, config)` is called
+- **THEN** it returns an `AgentEventStream` that is both async-iterable (yielding events) and has a `result()` promise
+
+#### Scenario: Continue from existing context
+- **WHEN** `agentLoopContinue(context, config)` is called
+- **THEN** the loop runs from the current context without adding a new prompt message
