@@ -4,6 +4,7 @@ import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   readlinkSync,
   rmSync,
   writeFileSync,
@@ -221,22 +222,57 @@ describe("worktree ops", () => {
 
     it("is a no-op when the dir is absent", () => {
       initGitRepo(projectDir);
-      expect(() => cleanMainChangeDir(projectDir, "absent")).not.toThrow();
+      expect(cleanMainChangeDir(projectDir, "absent")).toBe("absent");
     });
 
-    it("throws instead of dirtying main when the change dir is tracked", () => {
+    it("cleanMainChangeDir removes an untracked change dir", () => {
       initGitRepo(projectDir);
-      const dir = join(projectDir, ".sakti/changes/tracked");
-      mkdirSync(dir, { recursive: true });
-      writeFileSync(join(dir, "proposal.md"), "x");
-      execSync("git add .sakti/changes/tracked/proposal.md", { cwd: projectDir, shell: "/bin/sh" });
-      execSync("git commit -m tracked-change", { cwd: projectDir, shell: "/bin/sh" });
-      expect(() => cleanMainChangeDir(projectDir, "tracked")).toThrow("tracked change dir");
-      const status = execSync("git status --porcelain", {
+      mkdirSync(join(projectDir, ".sakti/changes/add-feature"), { recursive: true });
+      writeFileSync(join(projectDir, ".sakti/changes/add-feature/proposal.md"), "# proposal\n");
+
+      const result = cleanMainChangeDir(projectDir, "add-feature");
+
+      expect(result).toBe("removed-untracked");
+      expect(existsSync(join(projectDir, ".sakti/changes/add-feature"))).toBe(false);
+    });
+
+    it("cleanMainChangeDir skips a tracked clean change dir", () => {
+      initGitRepo(projectDir);
+      mkdirSync(join(projectDir, ".sakti/changes/add-feature"), { recursive: true });
+      writeFileSync(join(projectDir, ".sakti/changes/add-feature/proposal.md"), "# proposal\n");
+      execSync("git add .sakti/changes/add-feature && git commit -m change", {
         cwd: projectDir,
         shell: "/bin/sh",
-      }).toString();
-      expect(status).toBe("");
+      });
+
+      const result = cleanMainChangeDir(projectDir, "add-feature");
+
+      expect(result).toBe("skipped-tracked");
+      expect(existsSync(join(projectDir, ".sakti/changes/add-feature/proposal.md"))).toBe(true);
+      expect(
+        execSync("git status --porcelain --untracked-files=all", {
+          cwd: projectDir,
+          shell: "/bin/sh",
+        }).toString(),
+      ).toBe("");
+    });
+
+    it("cleanMainChangeDir skips a tracked modified change dir without reverting it", () => {
+      initGitRepo(projectDir);
+      mkdirSync(join(projectDir, ".sakti/changes/add-feature"), { recursive: true });
+      writeFileSync(join(projectDir, ".sakti/changes/add-feature/proposal.md"), "v1\n");
+      execSync("git add .sakti/changes/add-feature && git commit -m change", {
+        cwd: projectDir,
+        shell: "/bin/sh",
+      });
+      writeFileSync(join(projectDir, ".sakti/changes/add-feature/proposal.md"), "v2\n");
+
+      const result = cleanMainChangeDir(projectDir, "add-feature");
+
+      expect(result).toBe("skipped-tracked");
+      expect(
+        readFileSync(join(projectDir, ".sakti/changes/add-feature/proposal.md"), "utf-8"),
+      ).toBe("v2\n");
     });
   });
 

@@ -204,27 +204,35 @@ export function absorbChangeContent(projectCwd: string, wtPath: string, changeNa
   git(wtPath, `commit -m "sakti: begin change ${changeName}"`);
 }
 
+export type CleanMainChangeDirResult = "absent" | "removed-untracked" | "skipped-tracked";
+
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
 /**
  * Remove `.sakti/changes/<change>/` from the main working tree after its
  * content has been committed onto the mission branch. Keeps the main repo
  * clean (the content returns to main only via merge of `sakti/<change>`).
- * No-op when absent. Refuses tracked change dirs because removing tracked files
- * would leave staged deletions on main; tracked change content must be handled
- * by the user before graduation so "main stays clean" remains true.
+ * No-op when absent. Skips tracked change dirs without throwing — removing
+ * tracked files would leave staged deletions on main; the content stays put
+ * so "main stays clean" remains true. Returns which outcome happened.
  */
-export function cleanMainChangeDir(projectCwd: string, changeName: string): void {
+export function cleanMainChangeDir(
+  projectCwd: string,
+  changeName: string,
+): CleanMainChangeDirResult {
   const dir = join(projectCwd, ".sakti", "changes", changeName);
   if (!existsSync(dir)) {
-    return;
+    return "absent";
   }
   const rel = `.sakti/changes/${changeName}`;
-  const tracked = git(projectCwd, `ls-files "${rel}"`);
+  const tracked = git(projectCwd, `ls-files ${shellQuote(rel)}`);
   if (tracked !== "") {
-    throw new Error(
-      `Cannot clean tracked change dir "${rel}". Commit, revert, or move this change content before transitioning to mission.`,
-    );
+    return "skipped-tracked";
   }
   rmSync(dir, { recursive: true, force: true });
+  return "removed-untracked";
 }
 
 /**

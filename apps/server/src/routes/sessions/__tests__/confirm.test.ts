@@ -466,4 +466,55 @@ describe("confirm route — transition gates (POST /api/sessions/:id/confirm)", 
       rmSync(cwd, { recursive: true, force: true });
     }
   });
+
+  it("plan→mission approve allows tracked clean change dirs and leaves main clean", async () => {
+    const { app, ctx } = await makeApp([confirmRoutes]);
+    const cwd = mkdtempSync(join(tmpdir(), "sakti-confirm-tracked-"));
+    const stateDir = mkdtempSync(join(tmpdir(), "sakti-state-"));
+    execSync("git init -b main", { cwd, shell: "/bin/sh" });
+    execSync("git config user.email t@t.com", { cwd, shell: "/bin/sh" });
+    execSync("git config user.name t", { cwd, shell: "/bin/sh" });
+    execSync("mkdir -p .sakti/changes/add-feature", { cwd, shell: "/bin/sh" });
+    execSync("printf 'name: add-feature\n' > .sakti/changes/add-feature/.sakti.yaml", {
+      cwd,
+      shell: "/bin/sh",
+    });
+    execSync("printf '# proposal\n' > .sakti/changes/add-feature/proposal.md", {
+      cwd,
+      shell: "/bin/sh",
+    });
+    execSync("git add . && git commit -m init", { cwd, shell: "/bin/sh" });
+    process.env.SAKTI_AGENT_DIR = join(stateDir, "agent");
+
+    try {
+      const project = await ctx.repos.projects.create("p", cwd);
+      const session = await ctx.repos.sessions.create(project.id, {
+        kind: "plan",
+        status: "specify",
+        pendingTransitionTo: "mission",
+        pendingTransitionBody: "brief",
+      });
+
+      const res = await app.request(`/api/sessions/${session.id}/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve", to: "mission", body: "brief" }),
+      });
+
+      expect(res.status).toBe(200);
+      const after = ctx.repos.sessions.findById(session.id);
+      expect(after?.worktreePath).not.toBeNull();
+      expect(existsSync(join(cwd, ".sakti/changes/add-feature/proposal.md"))).toBe(true);
+      expect(
+        execSync("git status --porcelain --untracked-files=all", {
+          cwd,
+          shell: "/bin/sh",
+        }).toString(),
+      ).toBe("");
+    } finally {
+      delete process.env.SAKTI_AGENT_DIR;
+      rmSync(cwd, { recursive: true, force: true });
+      rmSync(stateDir, { recursive: true, force: true });
+    }
+  });
 });
