@@ -1,12 +1,6 @@
 import type { AgentDefinition } from "@sakti-code/agent";
 import { defineAgent, fromConfig, type PermissionRuleset } from "@sakti-code/agent";
-import {
-  BUILD_PROMPT,
-  EXPLORE_PROMPT,
-  GENERAL_PROMPT,
-  PLAN_PROMPT,
-  VERIFY_PROMPT,
-} from "./prompts.ts";
+import { BASE_PROMPT, EXPLORE_PROMPT, GENERAL_PROMPT } from "./prompts.ts";
 
 export const DEFAULT_AGENT_NAME = "build";
 
@@ -81,7 +75,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     name: "build",
     mode: "primary",
     description: "The default agent. Executes tools based on configured permissions.",
-    systemPrompt: BUILD_PROMPT,
+    systemPrompt: BASE_PROMPT,
     permission: buildRuleset(),
     activeToolNames: [
       "read",
@@ -109,7 +103,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     mode: "primary",
     description:
       "Verification agent. Reviews completed work for bugs, completeness, and coherence. Edit-denied: reports issues, does not fix them.",
-    systemPrompt: VERIFY_PROMPT,
+    systemPrompt: BASE_PROMPT,
     permission: verifyRuleset(),
     activeToolNames: ["read", "grep", "find", "bash", "webfetch", "websearch", "ask"],
   }),
@@ -127,7 +121,7 @@ export const SERVER_AGENTS: AgentDefinition[] = [
     mode: "primary",
     description:
       "PM-style planning agent for scoping work before implementation. Follows the sakti-plan skill for workflow and handoff.",
-    systemPrompt: PLAN_PROMPT,
+    systemPrompt: BASE_PROMPT,
     permission: planRuleset(),
     activeToolNames: [
       "read",

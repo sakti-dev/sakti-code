@@ -1,5 +1,6 @@
 import { evaluate, fromConfig, merge, type PermissionRuleset } from "@sakti-code/agent";
 import { describe, expect, it } from "vite-plus/test";
+import { BASE_PROMPT } from "../prompts.ts";
 import { resolveServerAgent, SERVER_AGENTS } from "../server-agents.ts";
 
 function decision(ruleset: PermissionRuleset, permission: string, pattern: string) {
@@ -15,6 +16,17 @@ describe("server agents", () => {
       "plan",
       "verify",
     ]);
+  });
+
+  it("phase agents (build/verify/plan) share the stable BASE_PROMPT — no role sections", () => {
+    // The system prompt is stable across phases so the prompt cache survives
+    // the build↔verify agent swaps. Phase guidance rides <instruction> blocks,
+    // not the system prompt.
+    for (const name of ["build", "verify", "plan"]) {
+      const agent = resolveServerAgent(name);
+      expect(agent).toBeDefined();
+      expect(agent?.systemPrompt).toBe(BASE_PROMPT);
+    }
   });
 
   it("build is allow-all but asks on reads of .env (except .env.example) and external dirs", () => {

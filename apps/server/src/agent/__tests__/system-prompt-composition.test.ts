@@ -2,13 +2,7 @@ import type { AgentTool } from "@sakti-code/agent";
 import { composeSystemPrompt } from "@sakti-code/agent";
 import { describe, expect, it } from "vite-plus/test";
 import { SKILLS_INSTRUCTIONS } from "../config/index.ts";
-import {
-  BASE_PROMPT,
-  BUILD_PROMPT,
-  EXPLORE_PROMPT,
-  GENERAL_PROMPT,
-  PLAN_PROMPT,
-} from "../config/prompts.ts";
+import { BASE_PROMPT, EXPLORE_PROMPT, GENERAL_PROMPT } from "../config/prompts.ts";
 
 function mockTool(name: string, description: string): AgentTool {
   return {
@@ -71,35 +65,12 @@ describe("runner system prompt composition", () => {
 });
 
 describe("base + agent section composition", () => {
-  it("BUILD_PROMPT starts with BASE_PROMPT", () => {
-    expect(BUILD_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
-  });
-
-  it("PLAN_PROMPT starts with BASE_PROMPT", () => {
-    expect(PLAN_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
-  });
-
   it("EXPLORE_PROMPT starts with BASE_PROMPT", () => {
     expect(EXPLORE_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
   });
 
   it("GENERAL_PROMPT starts with BASE_PROMPT", () => {
     expect(GENERAL_PROMPT.startsWith(BASE_PROMPT)).toBe(true);
-  });
-
-  it("BUILD_PROMPT is neutral and defers to the skill", () => {
-    const section = BUILD_PROMPT.slice(BASE_PROMPT.length);
-    expect(section).toContain("Build agent");
-    expect(section).toContain("skill");
-    // Neutral prompt must NOT hardcode phase-specific handoff behavior.
-    expect(section).not.toContain('ask({ kind: "completion"');
-  });
-
-  it("PLAN_PROMPT is neutral and defers to the skill", () => {
-    const section = PLAN_PROMPT.slice(BASE_PROMPT.length);
-    expect(section).toContain("Plan agent");
-    expect(section).toContain("skill");
-    expect(section).not.toContain('ask({ kind: "session"');
   });
 
   it("BASE_PROMPT contains tone and style guidance", () => {

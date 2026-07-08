@@ -2,14 +2,7 @@
 
 export { BRANCH_SUMMARY_PROMPTS } from "./branch-summary-prompts.ts";
 
-export {
-  BUILD_PROMPT,
-  DEFAULT_SYSTEM_PROMPT,
-  EXPLORE_PROMPT,
-  GENERAL_PROMPT,
-  PLAN_PROMPT,
-  VERIFY_PROMPT,
-} from "./prompts.ts";
+export { BASE_PROMPT, DEFAULT_SYSTEM_PROMPT, EXPLORE_PROMPT, GENERAL_PROMPT } from "./prompts.ts";
 
 export {
   BUILTIN_SKILL_NAMES,
