@@ -31,4 +31,40 @@ describe("resolveDependencySymlinkDirs", () => {
     expect(resolved.dirs).toEqual(DEFAULT_DEPENDENCY_SYMLINK_DIRS);
     expect(resolved.warning).toContain("worktree.dependencySymlinkDirs");
   });
+
+  it("allows nested safe relative dependency dirs", () => {
+    const resolved = resolveDependencySymlinkDirs({
+      worktree: { dependencySymlinkDirs: ["vendor/bundle", "tools/cache"] },
+    });
+
+    expect(resolved.dirs).toEqual(["vendor/bundle", "tools/cache"]);
+    expect(resolved.warning).toBeUndefined();
+  });
+
+  it("falls back to defaults when override contains path traversal", () => {
+    const resolved = resolveDependencySymlinkDirs({
+      worktree: { dependencySymlinkDirs: ["node_modules", "../outside"] },
+    });
+
+    expect(resolved.dirs).toEqual(DEFAULT_DEPENDENCY_SYMLINK_DIRS);
+    expect(resolved.warning).toContain("unsafe");
+  });
+
+  it("falls back to defaults when override contains an absolute path", () => {
+    const resolved = resolveDependencySymlinkDirs({
+      worktree: { dependencySymlinkDirs: ["/tmp/cache"] },
+    });
+
+    expect(resolved.dirs).toEqual(DEFAULT_DEPENDENCY_SYMLINK_DIRS);
+    expect(resolved.warning).toContain("unsafe");
+  });
+
+  it("falls back to defaults when override normalizes outside the worktree", () => {
+    const resolved = resolveDependencySymlinkDirs({
+      worktree: { dependencySymlinkDirs: ["nested/../../outside"] },
+    });
+
+    expect(resolved.dirs).toEqual(DEFAULT_DEPENDENCY_SYMLINK_DIRS);
+    expect(resolved.warning).toContain("unsafe");
+  });
 });

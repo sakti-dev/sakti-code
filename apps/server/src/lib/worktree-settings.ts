@@ -1,3 +1,5 @@
+import { isAbsolute, normalize } from "node:path";
+
 export const DEFAULT_DEPENDENCY_SYMLINK_DIRS = [
   "node_modules",
   ".venv",
@@ -22,16 +24,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function normalizeDirs(values: readonly string[]): string[] {
+function normalizeDirs(values: readonly string[]): string[] | null {
   const seen = new Set<string>();
   const result: string[] = [];
   for (const value of values) {
     const trimmed = value.trim();
-    if (trimmed === "" || seen.has(trimmed)) {
+    if (trimmed === "") {
       continue;
     }
-    seen.add(trimmed);
-    result.push(trimmed);
+    const normalized = normalize(trimmed).replaceAll("\\", "/");
+    const parts = normalized.split("/");
+    const unsafe =
+      isAbsolute(trimmed) ||
+      normalized === "." ||
+      normalized === ".." ||
+      normalized.startsWith("../") ||
+      parts.some((part) => part === "" || part === "..");
+    if (unsafe) {
+      return null;
+    }
+    if (seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    result.push(normalized);
   }
   return result;
 }
@@ -60,6 +76,13 @@ export function resolveDependencySymlinkDirs(
     };
   }
   const dirs = normalizeDirs(raw);
+  if (dirs === null) {
+    return {
+      dirs: fallback,
+      warning:
+        "Ignoring unsafe settings.worktree.dependencySymlinkDirs; entries must be relative paths inside the worktree.",
+    };
+  }
   if (dirs.length === 0) {
     return { dirs: fallback };
   }
