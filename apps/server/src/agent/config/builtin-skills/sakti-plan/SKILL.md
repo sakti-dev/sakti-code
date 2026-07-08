@@ -1,27 +1,26 @@
 ---
 name: sakti-plan
-description: "Use when starting a new change — planning requirements, defining scope, or creating the proposal/specs/design/tasks artifacts before any implementation begins."
+description: "Use when starting a new change — planning requirements, defining scope, and classifying the change type before any detailed specification begins. Produces only a lightweight proposal.md and hands off to a mission session via the ask tool."
 ---
 
 # Sakti Plan
 
 ## Overview
 
-Phase-1 planning skill. Explores requirements, confirms scope, creates the change and its artifacts (proposal/specs/design/tasks) via the sakti CLI, and verifies completion. Stops once artifacts are complete — no implementation, no auto-advance to build.
+Planning skill. Explores requirements, classifies the change (`full` vs `hotfix`), confirms scope, creates the change + a lightweight `proposal.md`, and graduates to a mission session. Produces **only** the proposal — detailed specification (specs, design.md, tasks.md) happens in the specify phase, not here.
 
-**Core principle:** requirements must be clarified and confirmed by the user before any artifact is created. Two blocking points enforce this: name/scope confirmation and final review.
+**Core principle:** requirements must be clarified and the change classified/confirmed by the user before any artifact is created. Two blocking points enforce this: classification+name confirmation and final review.
 
 ## When to Use
 
 - Starting a new change from scratch
 - User describes a feature, fix, or refactor to plan out
-- Need to produce proposal/specs/design/tasks before implementation
 
 **Do NOT use when:**
 
 - An active change already exists with artifacts in progress (resume it instead)
 - The work is a trivial fix that doesn't need structured planning
-- You are already past planning (implementation/verify/archive)
+- You are already past planning (specify/build/verify/archive)
 
 ## Prerequisites
 
@@ -44,129 +43,102 @@ Use the language of the user request that triggered this skill as the default ou
 - **Key unknowns:** unresolved assumptions, risks, or dependencies
 - **Draft acceptance scenarios:** at least the core success scenario and important boundary scenarios
 
-### Step 2 — Confirm Name + Scope (Blocking Point)
+### Step 2 — Classify + Confirm Name (Blocking Point)
 
-Present the clarification summary, then propose a change name:
+**2a. Classify the change type.** Based on the clarification summary, predict the workflow:
 
-- **2-3 kebab-case English name suggestions** derived from the summary, each with a one-line scope description
+- **`full`** — the change needs a spec/behavior change (new capability, modified behavior, cross-cutting work). It will go through the specify phase's brainstorming mode.
+- **`hotfix`** — no spec change needed: a bug fix (spec is correct, implementation is wrong) or a small improvement (cosmetic, refactor, polish). It will go through the specify phase's autonomous mode.
+
+This is a **prediction** that self-corrects: if the specify phase later discovers a spec change is actually needed, it escalates to brainstorming. So when unsure, lean `hotfix` only if you're confident no spec changes; otherwise `full`.
+
+**2b. Present classification + name and wait for explicit confirmation.** Call the `ask` tool (omit `kind` — it's an open question) presenting:
+
+- The clarification summary (brief)
+- Your proposed workflow (`full` or `hotfix`) with a one-line rationale
+- **2-3 kebab-case English name suggestions**, each with a one-line scope description
 - An explicit **"Enter a custom name"** option
-- A note: if the user enters non-kebab-case text (e.g. Chinese), it will be converted to compliant kebab-case English and shown back for confirmation
+- A note: non-kebab-case text (e.g. Chinese) will be converted to compliant kebab-case English and shown back for confirmation
 
 Names must be lowercase letters, digits, and hyphens only (e.g. `add-google-oauth-login`).
 
 **Pause and wait for the user's explicit choice.** Do not auto-generate, infer, or run `sakti new change` before confirmation. If the chosen name collides with an existing change, report it and ask for another.
 
-### Step 3 — Create Change + Artifacts
+### Step 3 — Create Change + Proposal
 
-**3a. Create the change.** Scaffold the change directory:
-
-```bash
-sakti new change "<name>"
-```
-
-This creates `.sakti/changes/<name>/` with `.sakti.yaml` using the default spec-driven schema. Optionally pass `--description "<text>"` or `--goal "<text>"` to record context.
-
-**3b. Check artifact status.** See which artifacts are ready and their dependency order:
+**3a. Create the change** with the confirmed workflow:
 
 ```bash
-sakti status --change "<name>"
+sakti new change "<name>" --workflow <full|hotfix>
 ```
 
-The default schema produces artifacts in this dependency order:
+This creates `.sakti/changes/<name>/` with `.sakti.yaml`.
 
-1. **proposal** (no dependencies) — ready immediately
-2. **specs** (requires proposal)
-3. **design** (requires proposal)
-4. **tasks** (requires specs + design)
+**3b. Write proposal.md only.** Draft a lightweight proposal using the confirmed clarification summary:
 
-**3c. Create artifacts in dependency order.** For each artifact the schema reports as ready, draft it using the confirmed clarification summary from Step 1/2:
+- **proposal.md** — WHY + WHAT: problem background (Why), what changes (What Changes), and impact (Impact). No Capabilities section — spec planning happens in the specify phase.
 
-- **proposal.md** — WHY: problem background, goals, scope, non-goals
-- **specs/\*\***`<capability>`/spec.md\*\* — WHAT: requirements and scenarios per capability
-- **design.md** — HOW (high-level): architecture decisions, approach selection, data flow
-- **tasks.md** — task checklist with clear descriptions
+Keep it concise (1-2 pages). Focus on the "why" and the rough "what", not the "how".
 
-After writing each artifact, re-run `sakti status --change "<name>"` to confirm the artifact-graph recognizes it and unlocks the next dependent artifact.
-
-**Failure handling:** if `sakti status` reports a parse or schema error, stop immediately and report it. Do not fall back to hard-coded prose that bypasses the schema — fix the root cause first.
-
-**Idempotency:** all steps are safe to re-run. If the change directory already exists and some artifacts are complete, skip them and continue from the first incomplete artifact.
-
-**Expected artifacts after Step 3:**
+**Expected artifact after Step 3:**
 
 ```
 .sakti/changes/<name>/
-├── .sakti.yaml          # change metadata + schema reference
-├── proposal.md          # Why + What: problem, goals, scope
-├── specs/
-│   └── <capability>/spec.md   # Requirements + scenarios
-├── design.md            # How (high-level): architecture decisions
-└── tasks.md             # Task checklist
+├── .sakti.yaml          # change metadata + schema reference + workflow
+└── proposal.md          # Why + What: problem, goals, scope, impact
 ```
+
+Do NOT create specs/, design.md, or tasks.md here — those belong to the specify phase.
 
 ### Step 4 — Review (Blocking Point)
 
-**4a. Content completeness check.** Run the artifact status and confirm all artifacts are done:
+**4a. Content check.** Confirm the proposal is substantive (not a stub): problem background, goals, scope, impact.
 
-```bash
-sakti status --change "<name>"
-```
+**4b. User review (blocking point).** Call the `ask` tool (omit `kind`) presenting a brief summary of the proposal and offering:
 
-Look for `All artifacts complete!` (or equivalent). If any artifact shows as incomplete or blocked, return to Step 3c — do not present the review until the artifact-graph reports completion.
+- **"Confirm, planning complete"** — graduate to a mission session
+- **"Needs adjustment"** — revise the proposal, then re-request confirmation
 
-Also confirm manually that the content is substantive (not just stubs):
+**Pause and wait for the user's explicit choice.**
 
-- **proposal.md:** problem background, goals, scope, non-goals
-- **specs:** requirements and scenarios per capability
-- **design.md:** high-level architecture decisions, approach selection, data flow
-- **tasks.md:** task list with clear descriptions
+### Step 5 — Graduate (Blocking Point)
 
-**4b. User review (blocking point).** Present a summary:
+When the user confirms planning is complete, **call `ask({ kind: "session", body })`** where `body` is a self-contained mission brief that a fresh agent can act on with no prior context. Include:
 
-- **proposal.md:** problem background, goals, scope
-- **specs:** capabilities and key requirements
-- **design.md:** high-level architecture decisions, approach selection
-- **tasks.md:** task count and key task descriptions
+- What to build and why (from the proposal)
+- Key files/constraints discovered during exploration
+- The rough plan and the chosen workflow (`full`/`hotfix`)
+- Any non-goals or open questions
 
-Offer a single-select choice:
-
-- **"Confirm, planning complete"** — artifacts meet expectations
-- **"Needs adjustment"** — include adjustment notes, modify the files, then re-request confirmation
-
-**Pause and wait for the user's explicit choice.** Do not announce completion before confirmation.
+`body` becomes the mission's first prompt — make it count. The `proposed-session` card this renders **is** the handoff UI; do not print a handoff text block. After calling `ask`, your turn ends. The user confirms or asks for revisions via the card's wired actions.
 
 ## Decision Points
 
-Steps 2 and 4b are **blocking points**. Follow these rules at each:
+Steps 2b, 4b, and 5 are **blocking points**. Follow these rules at each:
 
-- Pause and wait for an explicit user choice before continuing
-- Use the current platform's question or confirmation tool
-- If no structured tool exists, ask clear options in the conversation and stop until the user replies
-- Never substitute recommendation rules, defaults, or "the user would probably agree" for current confirmation
-- Do not create artifacts or announce completion before the user explicitly chooses
+- **Call the `ask` tool.** For an open choice (classification+name, review revisions), omit `kind`. For graduation, use `kind: "session"`.
+- **Never end a blocking point with plain text.** Free text does not set the pending ask, render a card, or trigger graduation — the user typing "approved" as a message does nothing.
+- Pause and wait for an explicit user choice before continuing.
+- Never substitute recommendation rules, defaults, or "the user would probably agree" for explicit confirmation.
 
 ## Exit & Handoff
 
-After the user confirms planning is complete, **stop**. Print a short handoff block:
+Graduation is the `ask({ kind: "session", body })` call in Step 5 — there is no separate handoff text block. The `proposed-session` card's Create button spawns the mission session (born in `specifying`); approve also runs plan→resource memory graduation.
+
+After the user acts on the card, you may note the next phase:
 
 ```
-Planning complete. Change: <name>
-Artifacts: proposal, specs, design, tasks — all done.
-
-Next steps:
-  Run `sakti status --change <name>` anytime to check artifact state
-  Run `sakti state transition <name> open-complete` to advance to the next phase
+Planning complete. Change: <name> (workflow: <full|hotfix>)
+The specify phase picks up from here: specs/design.md/tasks.md are produced there.
 ```
-
-The change is now ready for whoever picks it up next.
 
 ## Common Mistakes
 
-| Mistake                                                             | Fix                                                                                 |
-| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Creating artifacts before the user confirms scope                   | Step 2 is a blocking point — wait for explicit name/scope confirmation              |
-| Announcing completion before user review                            | Step 4b is a blocking point — wait for the review confirmation                      |
-| Creating artifacts in the wrong order                               | Follow the dependency order from `sakti status` (proposal → specs → design → tasks) |
-| Inferring or auto-generating the change name                        | Names must be kebab-case English, explicitly chosen by the user                     |
-| Falling back to hard-coded prose when `sakti status` reports errors | Stop and fix the schema/parse error; do not bypass the artifact-graph               |
-| Auto-advancing to implementation after review                       | This skill stops after planning; handoff is manual                                  |
+| Mistake                                                                     | Fix                                                                                    |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Printing a handoff text block instead of calling `ask({ kind: "session" })` | Graduation REQUIRES the ask call; text does not set the pending ask or render the card |
+| Creating specs/design.md/tasks.md during planning                           | Those belong to the specify phase; plan produces only proposal.md                      |
+| Skipping the classification step                                            | Step 2 classifies full vs hotfix — it drives the specify phase mode                    |
+| Creating the change before the user confirms classification + name          | Step 2b is a blocking point — wait for explicit confirmation                           |
+| Inferring or auto-generating the change name                                | Names must be kebab-case English, explicitly chosen by the user                        |
+| Ending a blocking point with plain text instead of the `ask` tool           | Every blocking point uses `ask`; free-text "gates" silently do nothing                 |
