@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 import {
   enumerateAgentConfigDirs,
@@ -8,6 +8,7 @@ import {
   getMigratedSentinelPath,
   getProfilesPath,
   getSettingsPath,
+  getWorktreeBaseDir,
 } from "../config-dirs.ts";
 
 describe("config-dirs", () => {
@@ -37,6 +38,12 @@ describe("config-dirs", () => {
     expect(getProfilesPath()).toBe("/tmp/sakti-test-agent/profiles.json");
     expect(getSettingsPath()).toBe("/tmp/sakti-test-agent/settings.json");
     expect(getMigratedSentinelPath()).toBe("/tmp/sakti-test-agent/.migrated");
+  });
+
+  it("getWorktreeBaseDir is a sibling of the agent dir (<parent>/projects)", () => {
+    process.env.SAKTI_AGENT_DIR = "/tmp/sakti-test-agent";
+    expect(getWorktreeBaseDir()).toBe(join(dirname("/tmp/sakti-test-agent"), "projects"));
+    expect(dirname(getWorktreeBaseDir())).toBe(dirname("/tmp/sakti-test-agent"));
   });
 
   describe("enumerateAgentConfigDirs", () => {

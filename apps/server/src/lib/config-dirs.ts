@@ -59,6 +59,16 @@ export function getLogDir(): string {
   return join(dirname(getAgentDir()), "logs");
 }
 
+/**
+ * Returns the worktree base directory: `<agentDirParent>/projects` (i.e.
+ * `~/.sakti/projects` by default). Mission worktrees live here, under
+ * `<projectBasename>--<changeName>`, so they don't clutter the user's project
+ * tree. Honors `SAKTI_AGENT_DIR` (moves with the rest of sakti state).
+ */
+export function getWorktreeBaseDir(): string {
+  return join(dirname(getAgentDir()), "projects");
+}
+
 export function getAuthPath(): string {
   return join(getAgentDir(), "auth.json");
 }
