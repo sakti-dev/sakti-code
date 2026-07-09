@@ -17,11 +17,9 @@ import { resolveOmConfig } from "./index.ts";
  * Best-effort: if OM isn't configured for the project, graduation is skipped —
  * never strand the mission spawn on a reflection failure.
  *
- * Why `kind: "mission"` in the resolve call: `resolveOmConfig` gates
- * `kind === "plan"` to undefined (children run no own OM). That gate is about
- * *running* OM during a turn, not about model availability — graduation is the
- * one operation that writes the project OM from a child, so we resolve the
- * project's configured observe/reflect models by bypassing the gate.
+ * `resolveOmConfig` is called with the child's real `kind`. Graduation forces
+ * `scope: "resource"` below so the child's transcript lands in the project's
+ * OM slot, not the child's thread slot.
  */
 export function buildGraduation(
   ctx: ServerContext,
@@ -30,7 +28,7 @@ export function buildGraduation(
   return async (sid) => {
     const omConfig = resolveOmConfig(ctx, {
       id: sid,
-      kind: "mission",
+      kind: childSession.kind,
       projectId: childSession.projectId,
       profileId: childSession.profileId,
     });

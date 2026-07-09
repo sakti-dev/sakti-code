@@ -191,7 +191,7 @@ describe("resolveOmConfig", () => {
     expect(result!.instruction).toBeUndefined();
   });
 
-  it("returns undefined for plan sessions (children read project OM read-only)", () => {
+  it("returns thread-scope config for plan sessions (plans observe their own thread)", () => {
     const ctx = makeCtx(PROFILES, { observationalMemory: {} }, { getApiKey: () => "sk-test" });
     const result = resolveOmConfig(ctx, {
       id: "s1",
@@ -199,7 +199,8 @@ describe("resolveOmConfig", () => {
       projectId: "p1",
       profileId: null,
     });
-    expect(result).toBeUndefined();
+    expect(result).toBeDefined();
+    expect(result!.scope).toBe("thread");
   });
 
   it("returns thread-scope config for mission sessions", () => {
