@@ -66,6 +66,7 @@ vi.mock("~/stores/store-context", () => ({
     },
     server: {
       store: {
+        activeProjectId: "proj1",
         sessions: {
           s1: { modelId: "test-model", profileId: null, projectId: "proj1" },
         },

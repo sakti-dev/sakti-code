@@ -37,23 +37,20 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   // menu just needs to know which mode opened.
   const [menu, setMenu] = createSignal<ContextMenuMode | null>(null);
 
-  const project = createMemo(() => {
-    const sid = props.sessionId;
-    if (!sid) {
-      return null;
-    }
-    const meta = server.store.sessions[sid];
-    if (!meta) {
-      return null;
-    }
-    const p = server.store.projects[meta.projectId];
-    return p ? { id: p.id, cwd: p.cwd } : null;
+  // The project that scopes the @-file search and /-catalog fetches. Sourced
+  // from the store's active project (synced from the active workspace tab in
+  // workspace-layout) so it resolves even before a session exists — the
+  // onboarding/draft plan view creates the session lazily on first send.
+  // Mirrors how ProfileSelect resolves its project.
+  const projectId = createMemo(() => {
+    const pid = server.store.activeProjectId;
+    return pid && server.store.projects[pid] ? pid : null;
   });
 
   // Catalog (commands + skills) for the / menu — one fetch per project,
   // prefetched so the menu opens instantly.
   const [catalog] = createResource(
-    () => project()?.id ?? null,
+    () => projectId(),
     async (pid) => {
       const res = await api.api.projects[":id"].context.$get({
         param: { id: pid },
@@ -76,7 +73,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     filesDebounce = setTimeout(() => setFilesQuery(q), 120);
   };
   const [files] = createResource(filesQuery, async (q) => {
-    const pid = project()?.id;
+    const pid = projectId();
     if (!pid) {
       return [];
     }
