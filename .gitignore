@@ -8,8 +8,7 @@ out/
 release/
 .turbo/
 artifacts/
-openspec/references/
-openspec-legacy/references/
+.sakti/references/
 *.tsbuildinfo
 .direnv/
 *.db*
