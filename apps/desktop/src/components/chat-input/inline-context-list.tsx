@@ -14,8 +14,8 @@ export interface InlineContextListProps {
  * Presentational: the parent owns the rows (via buildRows) and keyboard nav
  * (via useListNavigation); this component only renders rows, tracks the active
  * one for aria + scroll, and picks on click. Rows render in the order given so
- * arrow order matches visual order. A group heading is emitted whenever the
- * row's group changes.
+ * arrow order matches visual order. Slash-menu rows show section headings;
+ * at-menu rows are a flat path list.
  */
 export function InlineContextList(props: InlineContextListProps): JSX.Element {
   let listRef: HTMLDivElement | undefined;
@@ -55,7 +55,9 @@ export function InlineContextList(props: InlineContextListProps): JSX.Element {
           {(row, i) => (
             <>
               <Show when={i() === 0 || props.rows[i() - 1]?.group !== row.group}>
-                <p class="px-3 pt-2 font-medium text-muted-foreground text-xs">{row.group}</p>
+                <Show when={props.mode !== "@"}>
+                  <p class="px-3 pt-2 font-medium text-muted-foreground text-xs">{row.group}</p>
+                </Show>
               </Show>
               <button
                 aria-selected={props.activeId === row.id ? "true" : "false"}

@@ -3,7 +3,10 @@ import { buildRows, type CatalogItem, type FileItem } from "../context-rows";
 
 const commands: CatalogItem[] = [{ name: "commit", description: "commit and push" }];
 const skills: CatalogItem[] = [{ name: "graphify", description: "build a graph" }];
-const files: FileItem[] = [{ path: "src/a.ts" }, { path: "src/b.ts" }];
+const files: FileItem[] = [
+  { kind: "file", path: "src/a.ts" },
+  { kind: "file", path: "src/b.ts" },
+];
 
 describe("buildRows (/ mode)", () => {
   it("lists commands then skills with group labels", () => {
@@ -50,5 +53,26 @@ describe("buildRows (@ mode)", () => {
       ),
     ).toBe(false);
     expect(buildRows({ mode: "@", query: "", commands: [], skills: [], files: [] })).toEqual([]);
+  });
+
+  it("lists directory and file results together", () => {
+    const rows = buildRows({
+      mode: "@",
+      query: "components",
+      commands: [],
+      skills: [],
+      files: [
+        { kind: "directory", path: "src/components" },
+        { kind: "file", path: "src/components/button.tsx" },
+      ],
+    });
+
+    expect(rows.map((r) => r.group)).toEqual(["Files", "Files"]);
+    expect(rows.map((r) => r.token)).toEqual(["@src/components", "@src/components/button.tsx"]);
+    expect(rows[0]).toMatchObject({
+      id: "dir:src/components",
+      label: "src/components",
+    });
+    expect(rows[0]?.description).toBeUndefined();
   });
 });

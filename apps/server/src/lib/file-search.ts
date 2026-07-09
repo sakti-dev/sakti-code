@@ -8,6 +8,17 @@ export interface FileEntry {
 
 interface FffPicker {
   destroy(): void;
+  directorySearch(
+    query: string,
+    opts?: { pageSize?: number },
+  ): {
+    ok: boolean;
+    value?: {
+      items: Array<{ relativePath: string }>;
+      scores?: Array<{ total: number }>;
+    };
+    error?: string;
+  };
   isScanning(): boolean;
   mixedSearch(
     query: string,
@@ -59,6 +70,167 @@ function getPicker(cwd: string): Promise<PickerEntry> {
   return entry;
 }
 
+function normalizeRelativePath(path: string): string {
+  return path.replace(/\\/g, "/").replace(/\/$/, "").replace(/^\.\//, "");
+}
+
+function normalizeQuery(query: string | null): string {
+  return normalizeRelativePath((query ?? "").trim());
+}
+
+function isDirectoryIntent(query: string | null): boolean {
+  const trimmed = (query ?? "").trim();
+  return trimmed.endsWith("/") || trimmed.endsWith("\\");
+}
+
+function isFilenameLikeQuery(query: string | null): boolean {
+  const normalizedQuery = normalizeQuery(query);
+  return normalizedQuery.includes(".") && !isDirectoryIntent(query);
+}
+
+function pathSegments(path: string): string[] {
+  return normalizeRelativePath(path)
+    .toLowerCase()
+    .split("/")
+    .filter((segment) => segment.length > 0);
+}
+
+function basename(path: string): string {
+  const segments = pathSegments(path);
+  return segments.at(-1) ?? "";
+}
+
+function directoryBoost(entry: FileEntry, query: string | null): number {
+  const normalizedQuery = normalizeQuery(query).toLowerCase();
+  if (!normalizedQuery) {
+    return entry.kind === "directory" ? 50 : 0;
+  }
+
+  const normalizedPath = normalizeRelativePath(entry.path).toLowerCase();
+  const entryBase = basename(entry.path);
+  const queryBase = basename(normalizedQuery);
+  const filenameLike = isFilenameLikeQuery(query);
+
+  if (filenameLike) {
+    if (entry.kind === "file" && entryBase.includes(queryBase)) {
+      return 1_100;
+    }
+    return 0;
+  }
+
+  if (entry.kind === "file" && entryBase === queryBase) {
+    return 950;
+  }
+  if (entry.kind === "file" && normalizedPath.includes(`/${normalizedQuery}/`)) {
+    return 940;
+  }
+  if (entry.kind === "file" && entryBase.includes(queryBase)) {
+    return 900;
+  }
+  if (entry.kind === "file" && normalizedPath.includes(normalizedQuery)) {
+    return 700;
+  }
+
+  if (entry.kind === "directory" && normalizedPath === normalizedQuery) {
+    return 1_000;
+  }
+  if (entry.kind === "directory" && normalizedPath.endsWith(`/${normalizedQuery}`)) {
+    return 950;
+  }
+  if (entry.kind === "directory" && entryBase === queryBase) {
+    return 850;
+  }
+  if (
+    entry.kind === "directory" &&
+    (normalizedPath.includes(`/${normalizedQuery}/`) ||
+      normalizedPath.endsWith(`/${normalizedQuery}`))
+  ) {
+    return 500;
+  }
+  if (
+    entry.kind === "directory" &&
+    pathSegments(entry.path).some((part) => part.startsWith(queryBase))
+  ) {
+    return 300;
+  }
+  return 0;
+}
+
+function rankEntries(
+  entries: Array<FileEntry & { score: number; index: number }>,
+  query: string | null,
+  limit: number,
+): FileEntry[] {
+  const directoryOnly = isDirectoryIntent(query);
+  const filesOnly = isFilenameLikeQuery(query);
+  const seen = new Set<string>();
+  return entries
+    .filter((entry) => !directoryOnly || entry.kind === "directory")
+    .filter((entry) => !filesOnly || entry.kind === "file")
+    .map((entry) => ({
+      ...entry,
+      contextBoost: directoryBoost(entry, query),
+      depth: normalizeRelativePath(entry.path).split("/").length,
+    }))
+    .sort((a, b) => {
+      const boostDelta = b.contextBoost - a.contextBoost;
+      if (boostDelta !== 0) {
+        return boostDelta;
+      }
+      const scoreDelta = b.score - a.score;
+      if (scoreDelta !== 0) {
+        return scoreDelta;
+      }
+      const depthDelta = a.depth - b.depth;
+      if (depthDelta !== 0) {
+        return depthDelta;
+      }
+      return a.index - b.index;
+    })
+    .filter((entry) => {
+      const key = `${entry.kind}:${entry.path}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    })
+    .slice(0, limit)
+    .map(({ kind, path }) => ({ kind, path }));
+}
+
+/**
+ * fff's native index omits intermediate directories that contain no files
+ * directly (e.g. `src` when only `src/features/index.ts` exists). For context
+ * search, directories are first-class results, so synthesize missing ancestor
+ * directories from the returned paths before ranking.
+ */
+function withAncestorDirectories(
+  entries: Array<FileEntry & { score: number; index: number }>,
+  query: string | null,
+): Array<FileEntry & { score: number; index: number }> {
+  const existing = new Set(entries.map((e) => `${e.kind}:${e.path}`));
+  const result = [...entries];
+  const shouldAddAnyAncestor = normalizeQuery(query).length === 0;
+  let nextIndex = entries.length;
+  for (const entry of entries) {
+    const segments = normalizeRelativePath(entry.path).split("/");
+    for (let i = 1; i < segments.length; i++) {
+      const ancestor = segments.slice(0, i).join("/");
+      const ancestorEntry = { path: ancestor, kind: "directory" as const };
+      if (!shouldAddAnyAncestor && directoryBoost(ancestorEntry, query) === 0) {
+        continue;
+      }
+      const key = `directory:${ancestor}`;
+      if (!existing.has(key)) {
+        existing.add(key);
+        result.push({ ...ancestorEntry, score: 0, index: nextIndex++ });
+      }
+    }
+  }
+  return result;
+}
+
 /**
  * Search a project directory for files/directories matching `query`.
  *
@@ -73,17 +245,44 @@ export async function searchProjectFiles(
 ): Promise<FileEntry[]> {
   const picker = await getPicker(cwd);
   if (picker.ok) {
-    const found = picker.picker.mixedSearch(query ?? "", { pageSize: limit });
+    const pageSize = Math.max(limit * 4, limit);
+    const found = isDirectoryIntent(query)
+      ? picker.picker.directorySearch(query ?? "", { pageSize })
+      : picker.picker.mixedSearch(query ?? "", { pageSize });
     if (found.ok && found.value) {
-      const scored = found.value.items.map((item, index) => ({
-        item,
-        score: found.value?.scores?.[index]?.total ?? 0,
-      }));
-      scored.sort((a, b) => b.score - a.score || 0);
-      return scored.slice(0, limit).map(({ item }) => ({
-        path: item.item.relativePath,
-        kind: item.type === "directory" ? ("directory" as const) : ("file" as const),
-      }));
+      const mapped = found.value.items.map((item, index) => {
+        if ("type" in item) {
+          return {
+            path: normalizeRelativePath(item.item.relativePath),
+            kind: item.type === "directory" ? ("directory" as const) : ("file" as const),
+            score: found.value?.scores?.[index]?.total ?? 0,
+            index,
+          };
+        }
+        return {
+          path: normalizeRelativePath(item.relativePath),
+          kind: "directory" as const,
+          score: found.value?.scores?.[index]?.total ?? 0,
+          index,
+        };
+      });
+      // Directory-intent queries return only matching directories; for general
+      // queries, surface missing ancestor directories so directories stay
+      // first-class results even when fff's index omits intermediates.
+      const entries =
+        isDirectoryIntent(query) || isFilenameLikeQuery(query)
+          ? mapped
+          : withAncestorDirectories(mapped, query);
+      const ranked = rankEntries(entries, query, limit);
+      if (isFilenameLikeQuery(query) && ranked.every((entry) => entry.kind === "directory")) {
+        const fdResults = await runFd(query, cwd, limit);
+        if (fdResults.length > 0) {
+          return fdResults;
+        }
+      }
+      if (ranked.length > 0 || isDirectoryIntent(query)) {
+        return ranked;
+      }
     }
   }
 
@@ -96,29 +295,53 @@ export async function searchProjectFiles(
 
 async function runFd(query: string | null, cwd: string, limit: number): Promise<FileEntry[]> {
   try {
-    const args: string[] = [
-      "--type",
-      "f",
-      "--type",
-      "d",
-      "--max-results",
-      String(limit),
-      "--color",
-      "never",
-    ];
-    if (query) {
-      args.push(query);
-    }
-    const { done } = spawnPiped("fd", args, { cwd });
-    const result = await done;
-    if (result.spawnError) {
+    const directoryOnly = isDirectoryIntent(query);
+    const searchQuery = normalizeQuery(query);
+
+    const runTypedFd = async (
+      type: "f" | "d",
+      kind: "file" | "directory",
+      startIndex: number,
+    ): Promise<Array<FileEntry & { score: number; index: number }> | null> => {
+      const args = [
+        "--type",
+        type,
+        "--max-results",
+        String(Math.max(limit * 4, limit)),
+        "--color",
+        "never",
+      ];
+      if (searchQuery) {
+        args.push(searchQuery);
+      }
+      const { done } = spawnPiped("fd", args, { cwd });
+      const result = await done;
+      if (result.spawnError) {
+        return null;
+      }
+      return result.stdout
+        .split("\n")
+        .filter(Boolean)
+        .map((p, offset) => ({
+          path: normalizeRelativePath(p),
+          kind,
+          score: 0,
+          index: startIndex + offset,
+        }));
+    };
+
+    const directories = await runTypedFd("d", "directory", 0);
+    if (!directories) {
       return [];
     }
-    const lines = result.stdout.split("\n").filter(Boolean).slice(0, limit);
-    return lines.map((p) => ({
-      path: p.endsWith("/") ? p.slice(0, -1) : p,
-      kind: p.endsWith("/") ? ("directory" as const) : ("file" as const),
-    }));
+
+    const files = directoryOnly ? [] : await runTypedFd("f", "file", directories.length);
+    if (!files) {
+      return [];
+    }
+
+    const entries = [...directories, ...files];
+    return rankEntries(entries, query, limit);
   } catch {
     return [];
   }
@@ -137,24 +360,49 @@ async function runFind(query: string | null, cwd: string, limit: number): Promis
       ".DS_Store",
     ];
     const ignoreDirsExpr = ignoreDirs.flatMap((d) => ["-not", "-path", `*/${d}/*`]);
+    const searchQuery = normalizeQuery(query);
+    const directoryOnly = isDirectoryIntent(query);
 
-    const args: string[] = [".", "-type", "f"];
-    if (query) {
-      const escaped = query.replace(/[.*?[\]()]/g, "\\$&");
-      args.push("-name", `*${escaped}*`);
-    }
-    args.push(...ignoreDirsExpr);
+    const runTypedFind = async (
+      type: "f" | "d",
+      kind: "file" | "directory",
+      startIndex: number,
+    ): Promise<Array<FileEntry & { score: number; index: number }> | null> => {
+      const args = [".", "-type", type];
+      if (searchQuery) {
+        const escaped = searchQuery.replace(/[.*?[\]()]/g, "\\$&");
+        args.push("-name", `*${escaped}*`);
+      }
+      args.push(...ignoreDirsExpr);
 
-    const { done } = spawnPiped("find", args, { cwd });
-    const result = await done;
-    if (result.spawnError) {
+      const { done } = spawnPiped("find", args, { cwd });
+      const result = await done;
+      if (result.spawnError) {
+        return null;
+      }
+      return result.stdout
+        .split("\n")
+        .filter((p) => p && p !== ".")
+        .map((p, offset) => ({
+          path: normalizeRelativePath(p),
+          kind,
+          score: 0,
+          index: startIndex + offset,
+        }));
+    };
+
+    const directories = await runTypedFind("d", "directory", 0);
+    if (!directories) {
       return [];
     }
-    return result.stdout
-      .split("\n")
-      .filter(Boolean)
-      .slice(0, limit)
-      .map((p) => ({ path: p, kind: "file" as const }));
+
+    const files = directoryOnly ? [] : await runTypedFind("f", "file", directories.length);
+    if (!files) {
+      return [];
+    }
+
+    const entries = [...directories, ...files];
+    return rankEntries(entries, query, limit);
   } catch {
     return [];
   }

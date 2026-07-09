@@ -6,6 +6,7 @@ export interface CatalogItem {
 }
 
 export interface FileItem {
+  kind: "file" | "directory";
   path: string;
 }
 
@@ -65,7 +66,7 @@ export function buildRows(opts: {
 
   const fileRows: Row[] = files.map((f) => ({
     group: "Files",
-    id: `file:${f.path}`,
+    id: `${f.kind === "directory" ? "dir" : "file"}:${f.path}`,
     label: f.path,
     token: `@${f.path}`,
   }));

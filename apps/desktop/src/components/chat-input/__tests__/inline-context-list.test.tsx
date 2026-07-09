@@ -45,6 +45,14 @@ describe("InlineContextList", () => {
     expect(onPick).toHaveBeenCalledWith("@src/a.ts");
   });
 
+  it("does not render group headings in @ mode", () => {
+    render(() => <InlineContextList mode="@" rows={rows} activeId={null} onPick={vi.fn()} />);
+    expect(screen.queryByText("Commands")).toBeNull();
+    expect(screen.queryByText("Skills")).toBeNull();
+    expect(screen.queryByText("Files")).toBeNull();
+    expect(screen.getByText("src/a.ts")).toBeTruthy();
+  });
+
   it("shows an empty state when there are no rows", () => {
     render(() => <InlineContextList mode="/" rows={[]} activeId={null} onPick={vi.fn()} />);
     expect(screen.getByText("No matches")).toBeTruthy();

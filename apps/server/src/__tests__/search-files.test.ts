@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
@@ -16,6 +16,8 @@ describe("file search routes", () => {
     writeFileSync(join(tempDir, "hello.test.ts"), 'describe("hello", () => {});\n');
     writeFileSync(join(tempDir, "world.ts"), 'console.log("world");\n');
     writeFileSync(join(tempDir, "helper.ts"), "export const helper = 42;\n");
+    mkdirSync(join(tempDir, "src", "components"), { recursive: true });
+    writeFileSync(join(tempDir, "src", "components", "button.tsx"), "export const Button = 1;\n");
 
     const built = await makeApp([searchFilesRoutes]);
     app = built.app;
@@ -60,5 +62,14 @@ describe("file search routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.files.length).toBeLessThanOrEqual(2);
+  });
+
+  it("returns matching directories through the same files endpoint", async () => {
+    const res = await app.request(
+      new Request(`http://localhost/api/projects/${projectId}/files?query=components`),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.files[0]).toEqual({ kind: "directory", path: "src/components" });
   });
 });

@@ -90,7 +90,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
         return [];
       }
       const body = await res.json();
-      return body.files as { path: string }[];
+      return body.files as { kind: "file" | "directory"; path: string }[];
     },
   );
 

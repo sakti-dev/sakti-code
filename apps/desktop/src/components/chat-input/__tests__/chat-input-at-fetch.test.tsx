@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ChatInput } from "../chat-input";
 
 const mockFilesGet = vi.fn();
@@ -47,10 +47,7 @@ vi.mock("~/stores/store-context", () => ({
               }),
             },
             files: {
-              $get: mockFilesGet.mockReturnValue({
-                ok: true,
-                json: async () => ({ files: [] }),
-              }),
+              $get: mockFilesGet,
             },
           },
         },
@@ -93,9 +90,16 @@ function typeText(editor: HTMLElement, text: string) {
   fireEvent.input(editor);
 }
 
+beforeEach(() => {
+  mockFilesGet.mockReturnValue({
+    ok: true,
+    json: async () => ({ files: [] }),
+  });
+});
+
 afterEach(() => {
   cleanup();
-  mockFilesGet.mockClear();
+  mockFilesGet.mockReset();
 });
 
 describe("ChatInput @ fetch", () => {
@@ -151,5 +155,36 @@ describe("ChatInput @ fetch", () => {
         query: { query: "" },
       });
     });
+  });
+
+  it("renders directory results from the same @ files endpoint", async () => {
+    mockFilesGet.mockReturnValue({
+      ok: true,
+      json: async () => ({
+        files: [
+          { kind: "directory", path: "src/components" },
+          { kind: "file", path: "src/components/button.tsx" },
+        ],
+      }),
+    });
+
+    render(() => <ChatInput placeholder="p" sessionId={null} onSend={vi.fn()} />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
+
+    caretAtStart(editor);
+    fireEvent.keyDown(editor, { key: "@" });
+    typeText(editor, "components");
+
+    await waitFor(() => {
+      expect(mockFilesGet).toHaveBeenCalledWith({
+        param: { id: "proj1" },
+        query: { query: "components" },
+      });
+    });
+
+    expect(await screen.findByText("src/components")).toBeTruthy();
+    expect(screen.getByText("src/components/button.tsx")).toBeTruthy();
+    expect(screen.queryByText("Directories")).toBeNull();
+    expect(screen.queryByText("Files")).toBeNull();
   });
 });
