@@ -36,6 +36,23 @@ describe("TransitionCard", () => {
     expect(onApprove).toHaveBeenCalledTimes(1);
   });
 
+  it("disables approve while approval is pending", () => {
+    const onApprove = vi.fn();
+    render(() => (
+      <TransitionCard
+        to="mission"
+        body="p"
+        onApprove={onApprove}
+        onReject={() => {}}
+        approveDisabled={true}
+      />
+    ));
+    const create = screen.getByText("Create") as HTMLButtonElement;
+    expect(create.disabled).toBe(true);
+    fireEvent.click(create);
+    expect(onApprove).not.toHaveBeenCalled();
+  });
+
   it("fires onReject when the reject button is clicked", () => {
     const onReject = vi.fn();
     render(() => <TransitionCard to="build" body="p" onApprove={() => {}} onReject={onReject} />);

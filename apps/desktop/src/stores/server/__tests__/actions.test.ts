@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import { SessionRegistry } from "../../session/session-registry.ts";
+import { lastError, setLastError } from "../../workspace/ui-signals.ts";
 import { createActions } from "../actions.ts";
 import { createServerStore } from "../server-store.ts";
 import type { WsClient } from "../ws-client.ts";
@@ -27,10 +28,11 @@ function okRes(data: unknown) {
 }
 
 /** Minimal Hono client fetch-Response shape (error). */
-function errRes() {
+function errRes(status = 500, data: unknown = null) {
   return Promise.resolve({
     ok: false,
-    json: () => Promise.resolve(null),
+    status,
+    json: () => Promise.resolve(data),
   });
 }
 
@@ -513,6 +515,51 @@ describe("actions", () => {
 
       expect(result.ok).toBe(false);
       expect(deps.serverStore.store.sessions.s1?.status).toBe("specify");
+    });
+
+    it("surfaces the server confirm error detail", async () => {
+      setLastError(null);
+      const deps = makeDeps();
+      deps.serverStore.actions.addSession({
+        id: "s1",
+        projectId: "p1",
+        title: null,
+        modelId: null,
+        profileId: null,
+        thinkingLevel: "off",
+        kind: "plan",
+        pendingTransitionBody: "brief",
+        parentSessionId: null,
+        changeName: null,
+        worktreePath: null,
+        pendingTransitionTo: "mission",
+        status: "specify",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const mockApi = {
+        api: {
+          sessions: {
+            ":id": {
+              confirm: {
+                $post: vi.fn(() =>
+                  errRes(500, {
+                    error:
+                      'unexpected change: "src/dirty.ts"; set preserveUnrelated: "stash" to proceed',
+                  }),
+                ),
+              },
+            },
+          },
+        },
+      };
+      const actions = createActions(mockApi as never, makeMockWs(), deps);
+
+      const result = await actions.confirmTransition("s1", "mission", "brief", "approve");
+
+      expect(result.ok).toBe(false);
+      expect(lastError()).toContain('unexpected change: "src/dirty.ts"');
+      expect(lastError()).toContain('preserveUnrelated: "stash"');
     });
 
     it("mirrors changeName and worktreePath from the confirm response", async () => {

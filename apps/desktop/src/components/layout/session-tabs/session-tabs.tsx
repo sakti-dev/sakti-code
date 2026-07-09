@@ -2,12 +2,14 @@ import { motion } from "motion-solidjs";
 import { FiHome, FiMessageSquare, FiX } from "solid-icons/fi";
 import { For, type JSX, Show } from "solid-js";
 import { cn } from "~/lib/utils";
+import { useStore } from "~/stores/store-context";
 import {
   closeSessionTab,
   ensureProjectTabs,
   getActiveSessionIndex,
   getSessionTabs,
   switchSessionTab,
+  type SessionTab,
   type SessionTabKind,
 } from "~/stores/workspace/session-tab-store";
 import "./session-tabs.css";
@@ -38,9 +40,17 @@ function TabIcon(props: { kind: SessionTabKind }): JSX.Element {
 }
 
 export default function SessionTabs(props: SessionTabsProps): JSX.Element {
+  const { server } = useStore();
   ensureProjectTabs(props.projectId);
   const tabs = () => getSessionTabs(props.projectId);
   const activeIdx = () => getActiveSessionIndex(props.projectId);
+  const displayLabel = (tab: SessionTab) => {
+    if (tab.kind === "home" || !tab.sessionId) {
+      return tabLabel(tab.kind);
+    }
+    const title = server.store.sessions[tab.sessionId]?.title?.trim();
+    return title && title.length > 0 ? title : tabLabel(tab.kind);
+  };
 
   return (
     <div class="relative z-0 flex h-10 shrink-0 items-end overflow-hidden bg-card">
@@ -85,11 +95,13 @@ export default function SessionTabs(props: SessionTabsProps): JSX.Element {
 
                 <div class="relative flex items-center gap-1.5">
                   <TabIcon kind={tab.kind} />
-                  <span class="max-w-[140px] truncate">{tabLabel(tab.kind)}</span>
+                  <span class="max-w-[140px] truncate" title={displayLabel(tab)}>
+                    {displayLabel(tab)}
+                  </span>
 
                   <Show when={tab.kind !== "home"}>
                     <button
-                      aria-label={`Close ${tabLabel(tab.kind)} tab`}
+                      aria-label={`Close ${displayLabel(tab)} tab`}
                       class={cn(
                         "ml-1 flex h-4 w-4 shrink-0 items-center justify-center rounded transition-opacity",
                         isActive()

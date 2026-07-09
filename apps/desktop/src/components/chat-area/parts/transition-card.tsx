@@ -30,6 +30,7 @@ interface TransitionCardProps {
   body: string;
   onApprove: () => void;
   onReject: () => void;
+  approveDisabled?: boolean;
 }
 
 export function TransitionCard(props: TransitionCardProps): JSX.Element {
@@ -60,8 +61,9 @@ export function TransitionCard(props: TransitionCardProps): JSX.Element {
       </button>
       <div class="flex gap-2">
         <button
-          class="rounded-lg bg-primary px-4 py-1.5 text-primary-foreground text-sm hover:bg-primary/90"
+          class="rounded-lg bg-primary px-4 py-1.5 text-primary-foreground text-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           data-action="approve"
+          disabled={props.approveDisabled}
           onClick={() => props.onApprove()}
           type="button"
         >

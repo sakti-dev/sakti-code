@@ -1,7 +1,8 @@
-import { createEffect, createMemo, type JSX, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, type JSX, Show } from "solid-js";
 import { TransitionCard } from "~/components/chat-area/parts/transition-card";
 import { MessageTimeline } from "~/components/chat-area/timeline/message-timeline";
 import { ChatInput } from "~/components/chat-input/chat-input";
+import { createLogger } from "~/lib/utils";
 import { useStore } from "~/stores/store-context";
 import {
   closeSessionTab,
@@ -12,6 +13,8 @@ import {
 import { clearDraftProfile, getDraftProfile } from "~/stores/workspace/draft-profile-store";
 import { EmptyState } from "./empty-state";
 
+const log = createLogger({ module: "PlanChat" });
+
 interface PlanChatProps {
   projectId: string;
   sessionId: string | null;
@@ -19,6 +22,7 @@ interface PlanChatProps {
 
 export const PlanChat = (props: PlanChatProps): JSX.Element => {
   const { sessions, actions, server } = useStore();
+  const [isConfirming, setIsConfirming] = createSignal(false);
 
   const sessionStore = createMemo(() =>
     props.sessionId ? sessions.get(props.sessionId) : undefined,
@@ -54,49 +58,118 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
     const ask = session?.store.pendingTransition;
     const sid = props.sessionId;
     if (!(session && ask && sid)) {
+      log.warn("confirm transition skipped", {
+        projectId: props.projectId,
+        hasSessionStore: !!session,
+        hasPendingTransition: !!ask,
+        hasSessionId: !!sid,
+      });
       return;
     }
-
-    const result = await actions.confirmTransition(sid, ask.to, ask.body, "approve");
-    if (!result.ok) {
+    if (isConfirming()) {
+      log.warn("confirm transition ignored while in flight", {
+        projectId: props.projectId,
+        sessionId: sid,
+        to: ask.to,
+      });
       return;
     }
+    setIsConfirming(true);
 
-    // Read the changeName + worktreePath that the confirm route resolved +
-    // stamped on the plan session, and carry both to the new mission.
-    const planSession = server.store.sessions[sid];
-    const changeName = planSession?.changeName ?? undefined;
-    const worktreePath = planSession?.worktreePath ?? undefined;
+    try {
+      log.info("confirm transition approve clicked", {
+        projectId: props.projectId,
+        sessionId: sid,
+        to: ask.to,
+        bodyLength: ask.body.length,
+      });
 
-    const title =
-      ask.body
-        .split("\n")
-        .map((l) => l.trim())
-        .find((l) => l.length > 0)
-        ?.slice(0, 80) ?? undefined;
+      const result = await actions.confirmTransition(sid, ask.to, ask.body, "approve");
+      if (!result.ok) {
+        log.warn("confirm transition approve failed", {
+          projectId: props.projectId,
+          sessionId: sid,
+          to: ask.to,
+        });
+        return;
+      }
 
-    const missionSession = await actions.createSession(
-      props.projectId,
-      title,
-      changeName,
-      worktreePath,
-    );
-    if (!missionSession) return;
+      // Read the changeName + worktreePath that the confirm route resolved +
+      // stamped on the plan session, and carry both to the new mission.
+      const planSession = server.store.sessions[sid];
+      const changeName = planSession?.changeName ?? undefined;
+      const worktreePath = planSession?.worktreePath ?? undefined;
+      log.info("confirm transition approved", {
+        projectId: props.projectId,
+        sessionId: sid,
+        to: ask.to,
+        hasChangeName: !!changeName,
+        hasWorktreePath: !!worktreePath,
+      });
 
-    // Carry the plan session's profile over to the mission session so the
-    // user's profile pick (draft or changed mid-plan) follows the work.
-    const planProfileId = planSession?.profileId;
-    if (planProfileId) {
-      await actions.selectProfile(missionSession.id, planProfileId);
+      const title =
+        ask.body
+          .split("\n")
+          .map((l) => l.trim())
+          .find((l) => l.length > 0)
+          ?.slice(0, 80) ?? undefined;
+
+      const missionSession = await actions.createSession(
+        props.projectId,
+        title,
+        changeName,
+        worktreePath,
+      );
+      if (!missionSession) {
+        log.warn("mission session creation failed after confirm", {
+          projectId: props.projectId,
+          planSessionId: sid,
+          hasChangeName: !!changeName,
+          hasWorktreePath: !!worktreePath,
+        });
+        return;
+      }
+      log.info("mission session created from plan", {
+        projectId: props.projectId,
+        planSessionId: sid,
+        missionSessionId: missionSession.id,
+      });
+
+      // Carry the plan session's profile over to the mission session so the
+      // user's profile pick (draft or changed mid-plan) follows the work.
+      const planProfileId = planSession?.profileId;
+      if (planProfileId) {
+        await actions.selectProfile(missionSession.id, planProfileId);
+        log.info("mission profile carried from plan", {
+          projectId: props.projectId,
+          planSessionId: sid,
+          missionSessionId: missionSession.id,
+          profileId: planProfileId,
+        });
+      }
+
+      session.actions.clearPendingTransition();
+
+      const planIdx = getSessionTabIndex(props.projectId, sid);
+      if (planIdx >= 0) closeSessionTab(props.projectId, planIdx);
+      openSessionTab(props.projectId, missionSession.id, "mission");
+      log.info("mission tab opened from plan confirm", {
+        projectId: props.projectId,
+        planSessionId: sid,
+        missionSessionId: missionSession.id,
+        closedPlanTab: planIdx >= 0,
+      });
+
+      actions.sendPrompt(missionSession.id, ask.body);
+      log.info("mission prompt sent from plan confirm", {
+        projectId: props.projectId,
+        planSessionId: sid,
+        missionSessionId: missionSession.id,
+        bodyLength: ask.body.length,
+      });
+    } finally {
+      setIsConfirming(false);
     }
-
-    session.actions.clearPendingTransition();
-
-    const planIdx = getSessionTabIndex(props.projectId, sid);
-    if (planIdx >= 0) closeSessionTab(props.projectId, planIdx);
-    openSessionTab(props.projectId, missionSession.id, "mission");
-
-    actions.sendPrompt(missionSession.id, ask.body);
   };
 
   return (
@@ -115,6 +188,7 @@ export const PlanChat = (props: PlanChatProps): JSX.Element => {
             <TransitionCard
               to={ask().to}
               body={ask().body}
+              approveDisabled={isConfirming()}
               onApprove={handleConfirmSession}
               onReject={() => sessionStore()?.actions.clearPendingTransition()}
             />

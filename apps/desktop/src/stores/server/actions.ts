@@ -17,6 +17,24 @@ const log = createLogger({ module: "actions" });
 
 type ApiClient = Client;
 
+async function readErrorMessage(res: { json: () => Promise<unknown>; status: number }) {
+  try {
+    const body = await res.json();
+    if (
+      typeof body === "object" &&
+      body !== null &&
+      "error" in body &&
+      typeof body.error === "string" &&
+      body.error.length > 0
+    ) {
+      return body.error;
+    }
+  } catch {
+    // Fall through to the status-only message below.
+  }
+  return null;
+}
+
 export interface ActionsDeps {
   serverStore: { store: ServerStoreData; actions: ServerActions };
   sessionRegistry: SessionRegistry;
@@ -263,15 +281,38 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
 
     async confirmTransition(sessionId, to, body, action) {
       try {
+        log.info("confirm transition request", {
+          sessionId,
+          to,
+          action,
+          bodyLength: body.length,
+        });
         const res = await api.api.sessions[":id"].confirm.$post({
           param: { id: sessionId },
           json: { action, to, body },
         });
         if (!res.ok) {
-          setLastError(`Failed to ${action} (${res.status})`);
+          const detail = await readErrorMessage(res);
+          log.warn("confirm transition rejected", {
+            sessionId,
+            to,
+            action,
+            status: res.status,
+            hasDetail: !!detail,
+          });
+          setLastError(detail ?? `Failed to ${action} (${res.status})`);
           return { ok: false, instruction: null };
         }
         const updated = (await res.json()) as SessionMeta & { instruction?: string };
+        log.info("confirm transition response", {
+          sessionId,
+          to,
+          action,
+          status: updated.status,
+          hasInstruction: !!updated.instruction,
+          hasChangeName: updated.changeName !== null && updated.changeName !== undefined,
+          hasWorktreePath: updated.worktreePath !== null && updated.worktreePath !== undefined,
+        });
         // Mirror the server: status advanced + pending transition cleared.
         server.actions.updateSession(sessionId, {
           status: updated.status,
@@ -285,6 +326,7 @@ export function createActions(api: ApiClient, ws: WsClient, deps: ActionsDeps): 
           instruction: updated.instruction ?? null,
         };
       } catch (error) {
+        log.error("confirm transition request failed", error, { sessionId, to, action });
         setLastError(error instanceof Error ? error.message : "Failed to confirm transition");
         return { ok: false, instruction: null };
       }

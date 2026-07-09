@@ -163,4 +163,35 @@ describe("PlanChat", () => {
     expect(mocks.openSessionTab).not.toHaveBeenCalled();
     expect(mocks.sendPrompt).not.toHaveBeenCalled();
   });
+
+  it("ignores repeated create clicks while confirmation is in flight", async () => {
+    mocks.pendingTransition = { to: "mission", body: "Build the thing" };
+    mocks.sessionMeta.s1 = {
+      profileId: null,
+      changeName: "add-feature",
+      worktreePath: "/tmp/sakti/projects/app--add-feature",
+    };
+    let resolveConfirm: ((value: { ok: true; instruction: null }) => void) | undefined;
+    mocks.confirmTransition.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveConfirm = resolve;
+        }),
+    );
+
+    render(() => <PlanChat projectId="p1" sessionId="s1" />);
+
+    const create = await screen.findByRole("button", { name: "Create" });
+    fireEvent.click(create);
+    fireEvent.click(create);
+
+    expect(mocks.confirmTransition).toHaveBeenCalledTimes(1);
+
+    resolveConfirm?.({ ok: true, instruction: null });
+
+    await waitFor(() => {
+      expect(mocks.createSession).toHaveBeenCalledTimes(1);
+      expect(mocks.sendPrompt).toHaveBeenCalledWith("mission-1", "Build the thing");
+    });
+  });
 });
