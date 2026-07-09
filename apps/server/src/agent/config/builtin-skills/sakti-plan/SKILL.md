@@ -11,6 +11,18 @@ Planning skill. Explores requirements, classifies the change (`full` vs `hotfix`
 
 **Core principle:** requirements must be clarified and the change classified/confirmed by the user before any artifact is created. Two blocking points enforce this: classification+name confirmation and final review.
 
+## Guardrails
+
+Plan **never** investigates how to fix, build, or debug. Do not read source files to trace a bug, map architecture, find integration points, or propose approaches — that is specify's job, and specify will redo all of it from scratch regardless of what plan discovers. If you catch yourself reasoning about an implementation path, stop: you are in the wrong phase. Plan's only decisions are (1) what the user wants and why, (2) feature vs hotfix, and (3) whether a dependency spec already exists.
+
+**Allowed reads — plan may read only:**
+
+- `.sakti/specs/**` — to check whether a relevant spec already exists (dependency check)
+- `sakti list --json` — active-change context (collisions, related work)
+- the user's own message
+
+Everything else is off-limits: source under `packages/`, `apps/`, `electron/`, configs, scripts, etc. If a question genuinely needs source to answer, it belongs in specify, not plan.
+
 ## When to Use
 
 - Starting a new change from scratch
@@ -33,15 +45,16 @@ Use the language of the user request that triggered this skill as the default ou
 
 ## The Flow
 
-### Step 1 — Explore
+### Step 1 — Triage
 
-**Read `references/exploration.md`** (relative to this skill's directory) and follow its guidance to explore the problem space. Do not treat one Q&A turn as sufficient — keep asking until you can produce a **clarification summary** with all five parts:
+**Read `references/triage.md`** (relative to this skill's directory) — **mandatory** — and follow its guidance. Triage only: capture intent, classify, and check dependencies. **Never investigate how to implement or fix** — see [Guardrails](#guardrails).
+
+Do not treat one Q&A turn as sufficient — keep asking until you can produce a **clarification summary** with four parts:
 
 - **Goals:** the problem the user wants to solve and the expected outcome
 - **Non-goals:** what is explicitly out of scope
 - **Scope boundaries:** included/excluded modules, users, platforms, or data
-- **Key unknowns:** unresolved assumptions, risks, or dependencies
-- **Draft acceptance scenarios:** at least the core success scenario and important boundary scenarios
+- **Key unknowns:** unresolved _requirements_ unknowns (what should happen) — never _implementation_ unknowns (how to build it). Risks or dependencies at the requirements level only.
 
 ### Step 2 — Classify + Confirm Name (Blocking Point)
 
@@ -106,8 +119,8 @@ Do NOT create specs/, design.md, or tasks.md here — those belong to the specif
 When the user confirms planning is complete, **call `transition({ to: "mission", body })`** where `body` is a self-contained mission brief that a fresh agent can act on with no prior context. Include:
 
 - What to build and why (from the proposal)
-- Key files/constraints discovered during exploration
-- The rough plan and the chosen workflow (`full`/`hotfix`)
+- Dependency specs found during triage (from `.sakti/specs/`) and any requirements-level constraints
+- The chosen workflow (`full`/`hotfix`) and its rationale
 - Any non-goals or open questions
 
 `body` becomes the mission's first prompt — make it count. This is a **gate** transition: it renders a confirmation card. Do not print a separate handoff text block — the card is the handoff UI. After calling `transition`, your turn ends. The user approves (spawns the mission + runs plan→resource memory graduation) or rejects (you revise).
@@ -136,6 +149,7 @@ The specify phase picks up from here: specs/design.md/tasks.md are produced ther
 
 | Mistake                                                                          | Fix                                                                                                  |
 | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Investigating how to fix, implement, or debug during plan                        | Specify's job, not plan's — plan only triages. See Guardrails (allowed reads)                        |
 | Printing a handoff text block instead of calling `transition({ to: "mission" })` | Graduation REQUIRES the transition call; text does not set the pending transition or render the card |
 | Creating specs/design.md/tasks.md during planning                                | Those belong to the specify phase; plan produces only proposal.md                                    |
 | Skipping the classification step                                                 | Step 2 classifies full vs hotfix — it drives the specify phase mode                                  |
