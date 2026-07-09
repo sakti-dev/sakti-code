@@ -7,14 +7,16 @@ export const ScrollArea: Component<
     orientation?: "vertical" | "horizontal" | "both";
   }
 > = (props) => {
-  const [local, rest] = splitProps(props, ["class", "children", "orientation"]);
+  const [local, rest] = splitProps(props, ["ref", "class", "children", "orientation"]);
   const orientation = () => local.orientation ?? "vertical";
 
   return (
     <div class={cn("relative overflow-hidden", local.class)} {...rest}>
       <div
+        ref={local.ref}
         class={cn(
           "h-full w-full rounded-[inherit]",
+          local.class,
           orientation() === "vertical" && "overflow-y-auto overflow-x-hidden",
           orientation() === "horizontal" && "overflow-x-auto overflow-y-hidden",
           orientation() === "both" && "overflow-auto",

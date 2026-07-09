@@ -134,6 +134,21 @@ describe("searchProjectFiles", () => {
     expect(results.map((result) => result.path)).not.toContain("docs");
   });
 
+  it("returns no results for unrelated bogus fuzzy queries", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "fff-context-bogus-"));
+    mkdirSync(join(dir, ".sakti", "changes", "archive", "2026-06-27-packageable-desktop-build"), {
+      recursive: true,
+    });
+    writeFileSync(
+      join(dir, ".sakti", "changes", "archive", "2026-06-27-packageable-desktop-build", "spec.md"),
+      "x",
+    );
+
+    const results = await searchProjectFiles(dir, "alskdmalsmdklasd", 10);
+
+    expect(results).toEqual([]);
+  });
+
   it("returns directories for broad listings", async () => {
     const dir = mkdtempSync(join(tmpdir(), "fff-context-listing-"));
     mkdirSync(join(dir, "src", "features"), { recursive: true });

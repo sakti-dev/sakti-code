@@ -15,7 +15,7 @@ interface FffPicker {
     ok: boolean;
     value?: {
       items: Array<{ relativePath: string }>;
-      scores?: Array<{ total: number }>;
+      scores?: FffScore[];
     };
     error?: string;
   };
@@ -30,7 +30,7 @@ interface FffPicker {
         type: "file" | "directory";
         item: { relativePath: string };
       }>;
-      scores?: Array<{ total: number }>;
+      scores?: FffScore[];
     };
     error?: string;
   };
@@ -38,6 +38,13 @@ interface FffPicker {
 }
 
 type PickerEntry = { ok: true; picker: FffPicker } | { ok: false };
+type FffScore = {
+  exactMatch?: boolean;
+  filenameBonus?: number;
+  matchType?: string;
+  total: number;
+};
+type RankedEntry = FileEntry & { index: number; score: number };
 
 /** Process-lifetime fff picker cache keyed by project cwd. */
 const pickerCache = new Map<string, Promise<PickerEntry>>();
@@ -100,6 +107,40 @@ function basename(path: string): string {
   return segments.at(-1) ?? "";
 }
 
+function isConfidentFffMatch(entry: FileEntry, score: FffScore | undefined, query: string | null) {
+  const normalizedQuery = normalizeQuery(query).toLowerCase();
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const normalizedPath = normalizeRelativePath(entry.path).toLowerCase();
+  const entryBase = basename(entry.path);
+  const queryBase = basename(normalizedQuery);
+
+  if (isFilenameLikeQuery(query)) {
+    return normalizedPath.includes(normalizedQuery) || entryBase.includes(queryBase);
+  }
+
+  if (
+    normalizedPath.includes(normalizedQuery) ||
+    entryBase.includes(queryBase) ||
+    score?.exactMatch === true ||
+    (score?.filenameBonus ?? 0) > 0
+  ) {
+    return true;
+  }
+
+  const matchType = score?.matchType ?? "";
+  if (
+    (matchType === "fuzzy_filename" || matchType === "fuzzy_dirname") &&
+    (score?.total ?? 0) >= 100
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function directoryBoost(entry: FileEntry, query: string | null): number {
   const normalizedQuery = normalizeQuery(query).toLowerCase();
   if (!normalizedQuery) {
@@ -121,7 +162,17 @@ function directoryBoost(entry: FileEntry, query: string | null): number {
   if (entry.kind === "file" && entryBase === queryBase) {
     return 950;
   }
+  if (
+    entry.kind === "file" &&
+    normalizedPath.includes(`/${normalizedQuery}/`) &&
+    entryBase.startsWith(queryBase)
+  ) {
+    return 980;
+  }
   if (entry.kind === "file" && normalizedPath.includes(`/${normalizedQuery}/`)) {
+    return 960;
+  }
+  if (entry.kind === "file" && entryBase.startsWith(queryBase)) {
     return 940;
   }
   if (entry.kind === "file" && entryBase.includes(queryBase)) {
@@ -132,13 +183,13 @@ function directoryBoost(entry: FileEntry, query: string | null): number {
   }
 
   if (entry.kind === "directory" && normalizedPath === normalizedQuery) {
-    return 1_000;
+    return 1_200;
   }
   if (entry.kind === "directory" && normalizedPath.endsWith(`/${normalizedQuery}`)) {
-    return 950;
+    return 1_150;
   }
   if (entry.kind === "directory" && entryBase === queryBase) {
-    return 850;
+    return 1_100;
   }
   if (
     entry.kind === "directory" &&
@@ -156,11 +207,7 @@ function directoryBoost(entry: FileEntry, query: string | null): number {
   return 0;
 }
 
-function rankEntries(
-  entries: Array<FileEntry & { score: number; index: number }>,
-  query: string | null,
-  limit: number,
-): FileEntry[] {
+function rankEntries(entries: RankedEntry[], query: string | null, limit: number): FileEntry[] {
   const directoryOnly = isDirectoryIntent(query);
   const filesOnly = isFilenameLikeQuery(query);
   const seen = new Set<string>();
@@ -205,10 +252,7 @@ function rankEntries(
  * search, directories are first-class results, so synthesize missing ancestor
  * directories from the returned paths before ranking.
  */
-function withAncestorDirectories(
-  entries: Array<FileEntry & { score: number; index: number }>,
-  query: string | null,
-): Array<FileEntry & { score: number; index: number }> {
+function withAncestorDirectories(entries: RankedEntry[], query: string | null): RankedEntry[] {
   const existing = new Set(entries.map((e) => `${e.kind}:${e.path}`));
   const result = [...entries];
   const shouldAddAnyAncestor = normalizeQuery(query).length === 0;
@@ -250,22 +294,27 @@ export async function searchProjectFiles(
       ? picker.picker.directorySearch(query ?? "", { pageSize })
       : picker.picker.mixedSearch(query ?? "", { pageSize });
     if (found.ok && found.value) {
-      const mapped = found.value.items.map((item, index) => {
-        if ("type" in item) {
+      const mapped = found.value.items
+        .map((item, index) => {
+          const score = found.value?.scores?.[index];
+          if ("type" in item) {
+            return {
+              path: normalizeRelativePath(item.item.relativePath),
+              kind: item.type === "directory" ? ("directory" as const) : ("file" as const),
+              fffScore: score,
+              score: score?.total ?? 0,
+              index,
+            };
+          }
           return {
-            path: normalizeRelativePath(item.item.relativePath),
-            kind: item.type === "directory" ? ("directory" as const) : ("file" as const),
-            score: found.value?.scores?.[index]?.total ?? 0,
+            path: normalizeRelativePath(item.relativePath),
+            kind: "directory" as const,
+            fffScore: score,
+            score: score?.total ?? 0,
             index,
           };
-        }
-        return {
-          path: normalizeRelativePath(item.relativePath),
-          kind: "directory" as const,
-          score: found.value?.scores?.[index]?.total ?? 0,
-          index,
-        };
-      });
+        })
+        .filter((entry) => isConfidentFffMatch(entry, entry.fffScore, query));
       // Directory-intent queries return only matching directories; for general
       // queries, surface missing ancestor directories so directories stay
       // first-class results even when fff's index omits intermediates.
