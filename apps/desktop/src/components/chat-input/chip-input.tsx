@@ -1,6 +1,6 @@
 import { createSignal, type JSX, onMount, Show } from "solid-js";
 import { cn } from "~/lib/utils";
-import { createChipElement, isAtEditorStart, serializeEditor } from "./chip-model";
+import { createChipElement, isAtEditorEnd, isAtEditorStart, serializeEditor } from "./chip-model";
 
 export interface ChipTrigger {
   char: "/" | "@";
@@ -10,6 +10,7 @@ export interface ChipInputApi {
   clear: () => void;
   focus: () => void;
   replaceTokenWithChip: (token: string) => void;
+  setText: (text: string) => void;
 }
 
 export interface ChipInputProps {
@@ -22,6 +23,10 @@ export interface ChipInputProps {
   onQuery?: (query: string | null) => void;
   /** Forwards ArrowUp/ArrowDown/Enter/Escape while a token is active. */
   onMenuKeyDown?: (e: KeyboardEvent) => void;
+  /** ArrowUp at editor start / ArrowDown at editor end (no token active). */
+  onHistoryNavigate?: (dir: "up" | "down") => void;
+  /** When true, ArrowUp/ArrowDown navigate history regardless of caret. */
+  historyActive?: () => boolean;
   placeholder?: string;
   registerApi?: (api: ChipInputApi) => void;
 }
@@ -178,6 +183,22 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
     },
     focus: () => editorRef?.focus(),
     replaceTokenWithChip,
+    setText: (text: string) => {
+      const ed = editorRef;
+      if (!ed) {
+        return;
+      }
+      ed.textContent = text;
+      tokenAnchor = null;
+      ed.focus();
+      const range = document.createRange();
+      range.selectNodeContents(ed);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      emit();
+    },
   };
 
   onMount(() => {
@@ -195,6 +216,19 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
         endToken();
       }
       return;
+    }
+    if (!tokenAnchor && editorRef && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      const active = props.historyActive?.() ?? false;
+      if (e.key === "ArrowUp" && (active || isAtEditorStart(editorRef))) {
+        e.preventDefault();
+        props.onHistoryNavigate?.("up");
+        return;
+      }
+      if (e.key === "ArrowDown" && (active || isAtEditorEnd(editorRef))) {
+        e.preventDefault();
+        props.onHistoryNavigate?.("down");
+        return;
+      }
     }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();

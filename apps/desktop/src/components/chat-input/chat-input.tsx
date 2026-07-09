@@ -18,6 +18,13 @@ import { buildRows, type ContextMenuMode } from "./context-rows";
 import { InlineContextList } from "./inline-context-list";
 import { InputFooter } from "./input-footer";
 import { PermissionStrip } from "./permission-strip";
+import {
+  historyDown,
+  historyCurrent,
+  historyUp,
+  initialHistoryNav,
+  type HistoryNavState,
+} from "./prompt-history.ts";
 import { ProfileSelect } from "./profile-select";
 import { SendButton } from "./send-button";
 import { useListNavigation } from "./use-list-navigation.ts";
@@ -93,6 +100,40 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
       return body.files as { kind: "file" | "directory"; path: string }[];
     },
   );
+
+  // Prompt history for ArrowUp/ArrowDown recall — per-project, persisted across
+  // sessions. Refetched after each send so the just-sent prompt is immediately
+  // recallable.
+  const [history, { refetch: refetchHistory }] = createResource(
+    () => projectId(),
+    async (pid) => {
+      if (!pid) {
+        return [];
+      }
+      const res = await api.api.projects[":id"]["prompt-history"].$get({
+        param: { id: pid },
+        query: {},
+      });
+      if (!res.ok) {
+        return [];
+      }
+      const body = await res.json();
+      return body.prompts as string[];
+    },
+  );
+
+  let histNav: HistoryNavState = initialHistoryNav;
+  const [histActive, setHistActive] = createSignal(false);
+  const onHistoryNavigate = (dir: "up" | "down") => {
+    const list = history() ?? [];
+    if (list.length === 0) {
+      return;
+    }
+    histNav = dir === "up" ? historyUp(histNav, list, value()) : historyDown(histNav);
+    setHistActive(histNav.index !== -1);
+    const recalled = historyCurrent(histNav, list);
+    chipApi?.setText(recalled ?? histNav.draft);
+  };
 
   // Live token query typed in the editor after the trigger char (null closes).
   const [tokenQuery, setTokenQuery] = createSignal("");
@@ -220,6 +261,9 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
       actions.sendPrompt(props.sessionId, text);
     }
     chipApi?.clear();
+    histNav = initialHistoryNav;
+    setHistActive(false);
+    void refetchHistory();
   };
 
   return (
@@ -280,7 +324,9 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
         >
           <ChipInput
             disabled={props.disabled}
+            historyActive={histActive}
             onChange={setValue}
+            onHistoryNavigate={onHistoryNavigate}
             onSubmit={send}
             onTrigger={onTrigger}
             onQuery={onQuery}

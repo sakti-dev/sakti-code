@@ -10,6 +10,7 @@ import { profilesRoutes } from "./routes/profiles.ts";
 import { contextRoutes } from "./routes/projects/context.ts";
 import { gitRoutes } from "./routes/projects/git.ts";
 import { planSessionRoutes } from "./routes/projects/plan-session.ts";
+import { promptHistoryRoutes } from "./routes/projects/prompt-history.ts";
 import { projectsRoutes } from "./routes/projects/projects.ts";
 import { searchFilesRoutes } from "./routes/projects/search-files.ts";
 import { chatRoutes } from "./routes/sessions/chat.ts";
@@ -37,6 +38,7 @@ export function buildApp(ctx: ServerContext) {
     .route("/", gitRoutes)
     .route("/", searchFilesRoutes)
     .route("/", contextRoutes)
+    .route("/", promptHistoryRoutes)
     .route("/", sessionsRoutes)
     .route("/", chatRoutes)
     .route("/", confirmRoutes)

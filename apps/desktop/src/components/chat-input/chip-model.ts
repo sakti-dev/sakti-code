@@ -90,3 +90,35 @@ export function isAtEditorStart(editor: HTMLElement): boolean {
   const { startContainer: node, startOffset: offset } = sel.getRangeAt(0);
   return isPointAtEditorStart(editor, node, offset);
 }
+
+export function isPointAtEditorEnd(editor: HTMLElement, node: Node, offset: number): boolean {
+  if (node === editor) {
+    return offset === editor.childNodes.length;
+  }
+  const len =
+    node.nodeType === Node.TEXT_NODE ? (node.textContent?.length ?? 0) : node.childNodes.length;
+  if (offset !== len) {
+    return false;
+  }
+  let cur: Node | null = node;
+  while (cur && cur !== editor) {
+    if (cur.nextSibling) {
+      return false;
+    }
+    cur = cur.parentNode;
+  }
+  return cur === editor;
+}
+
+/** True if the collapsed caret sits at the very end of `editor`. */
+export function isAtEditorEnd(editor: HTMLElement): boolean {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) {
+    return editor.childNodes.length === 0;
+  }
+  const range = sel.getRangeAt(0);
+  if (!range.collapsed) {
+    return false;
+  }
+  return isPointAtEditorEnd(editor, range.endContainer, range.endOffset);
+}

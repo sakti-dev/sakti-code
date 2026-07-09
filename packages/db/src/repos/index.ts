@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { DrizzleDB } from "../init.ts";
-import { projects, sessions, settings } from "../schema.ts";
+import { projects, sessionEntries, sessions, settings } from "../schema.ts";
 
 export class ProjectRepo {
   private readonly db: DrizzleDB;
@@ -121,6 +121,17 @@ export class SessionRepo {
       .from(sessions)
       .where(eq(sessions.projectId, projectId))
       .orderBy(desc(sessions.createdAt))
+      .all();
+  }
+
+  listProjectMessageContents(projectId: string, limit: number): { content: string }[] {
+    return this.db
+      .select({ content: sessionEntries.content })
+      .from(sessionEntries)
+      .innerJoin(sessions, eq(sessions.id, sessionEntries.sessionId))
+      .where(and(eq(sessions.projectId, projectId), eq(sessionEntries.kind, "message")))
+      .orderBy(desc(sessionEntries.createdAt))
+      .limit(limit)
       .all();
   }
 

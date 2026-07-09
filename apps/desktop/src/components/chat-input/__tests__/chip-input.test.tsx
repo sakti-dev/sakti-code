@@ -218,4 +218,42 @@ describe("ChipInput triggers + live query", () => {
     expect(serializeEditor(ed)).toBe("fix @src/a.ts ");
     expect(onChange).toHaveBeenLastCalledWith("fix @src/a.ts ");
   });
+
+  it("fires onHistoryNavigate('up') on ArrowUp at editor start", () => {
+    const onHistoryNavigate = vi.fn();
+    render(() => <ChipInput onChange={() => {}} onHistoryNavigate={onHistoryNavigate} />);
+    const ed = screen.getByRole("textbox") as HTMLElement;
+    caretAtStart(ed);
+    fireEvent.keyDown(ed, { key: "ArrowUp" });
+    expect(onHistoryNavigate).toHaveBeenCalledWith("up");
+  });
+
+  it("does NOT fire history nav on ArrowUp when caret is mid-text", () => {
+    const onHistoryNavigate = vi.fn();
+    render(() => <ChipInput onChange={() => {}} onHistoryNavigate={onHistoryNavigate} />);
+    const ed = screen.getByRole("textbox") as HTMLElement;
+    typeText(ed, "ab");
+    fireEvent.keyDown(ed, { key: "ArrowUp" });
+    expect(onHistoryNavigate).not.toHaveBeenCalled();
+  });
+
+  it("fires onHistoryNavigate('down') on ArrowDown at editor end", () => {
+    const onHistoryNavigate = vi.fn();
+    render(() => <ChipInput onChange={() => {}} onHistoryNavigate={onHistoryNavigate} />);
+    const ed = screen.getByRole("textbox") as HTMLElement;
+    typeText(ed, "ab");
+    caretAtEnd(ed);
+    fireEvent.keyDown(ed, { key: "ArrowDown" });
+    expect(onHistoryNavigate).toHaveBeenCalledWith("down");
+  });
+
+  it("setText replaces content, emits onChange, and is exposed via registerApi", () => {
+    let api: ChipInputApi | undefined;
+    const onChange = vi.fn();
+    render(() => <ChipInput onChange={onChange} registerApi={(a) => (api = a)} />);
+    api!.setText("recalled prompt");
+    const ed = screen.getByRole("textbox") as HTMLElement;
+    expect(ed.textContent).toBe("recalled prompt");
+    expect(onChange).toHaveBeenLastCalledWith("recalled prompt");
+  });
 });
