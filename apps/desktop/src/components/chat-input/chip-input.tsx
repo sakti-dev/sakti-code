@@ -9,7 +9,7 @@ export interface ChipTrigger {
 export interface ChipInputApi {
   clear: () => void;
   focus: () => void;
-  insertChip: (token: string) => void;
+  replaceTokenWithChip: (token: string) => void;
 }
 
 export interface ChipInputProps {
@@ -18,6 +18,10 @@ export interface ChipInputProps {
   onChange: (value: string) => void;
   onSubmit?: () => void;
   onTrigger?: (t: ChipTrigger) => void;
+  /** Live query text after a trigger char; null closes the active token. */
+  onQuery?: (query: string | null) => void;
+  /** Forwards ArrowUp/ArrowDown/Enter/Escape while a token is active. */
+  onMenuKeyDown?: (e: KeyboardEvent) => void;
   placeholder?: string;
   registerApi?: (api: ChipInputApi) => void;
 }
@@ -31,13 +35,17 @@ function saveCaret(): Range | null {
   return null;
 }
 
+const MENU_KEYS = new Set(["ArrowDown", "ArrowUp", "Enter", "Escape"]);
+
 export function ChipInput(props: ChipInputProps): JSX.Element {
   let editorRef: HTMLDivElement | undefined;
   const [empty, setEmpty] = createSignal(true);
   // IME composition guard — suppress key handling mid-composition.
   let composing = false;
-  // Caret bookmark captured when a trigger char is typed; consumed by insertChip.
-  let pendingTrigger: Range | null = null;
+  // Collapsed Range recorded just BEFORE the trigger char is inserted. The
+  // live query is the text between this anchor and the caret; replaceTokenWith
+  // Chip deletes that span and drops the chip in its place.
+  let tokenAnchor: Range | null = null;
 
   const emit = () => {
     if (!editorRef) {
@@ -45,40 +53,108 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
     }
     const text = serializeEditor(editorRef);
     setEmpty(text.length === 0 && editorRef.childNodes.length === 0);
-    // Any free-form input invalidates a pending trigger bookmark.
-    pendingTrigger = null;
     props.onChange(text);
+    computeQuery();
   };
 
-  const insertChip = (token: string) => {
+  // Derive the live query from tokenAnchor → caret. Closes (onQuery null) when
+  // the token contains whitespace or the trigger char was deleted.
+  const computeQuery = () => {
+    if (!editorRef || !tokenAnchor) {
+      return;
+    }
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) {
+      return;
+    }
+    const caret = sel.getRangeAt(0);
+    const span = tokenAnchor.cloneRange();
+    try {
+      span.setEnd(caret.startContainer, caret.startOffset);
+    } catch {
+      return;
+    }
+    const text = span.toString();
+    if (text.length === 0) {
+      endToken();
+      return;
+    }
+    const query = text.slice(1);
+    if (/\s/.test(query)) {
+      endToken();
+      return;
+    }
+    props.onQuery?.(query);
+  };
+
+  const endToken = () => {
+    tokenAnchor = null;
+    props.onQuery?.(null);
+  };
+
+  /** Insert the trigger char at the caret and record the token anchor. */
+  const beginToken = (char: "/" | "@") => {
+    tokenAnchor = saveCaret();
+    insertTextAtCaret(char);
+    props.onTrigger?.({ char });
+    emit();
+  };
+
+  const insertTextAtCaret = (text: string) => {
+    const ed = editorRef;
+    if (!ed) {
+      return;
+    }
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && ed.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      const node = document.createTextNode(text);
+      range.insertNode(node);
+      range.setStartAfter(node);
+      range.setEndAfter(node);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      ed.appendChild(document.createTextNode(text));
+    }
+  };
+
+  const replaceTokenWithChip = (token: string) => {
     const ed = editorRef;
     if (!ed) {
       return;
     }
     const chip = createChipElement(token);
-    // A trailing space gives the caret a text node to anchor to (a caret set
-    // directly after a contenteditable=false element at the end of the editor
-    // is unreliable in browsers) and matches the prior `${token} ` UX.
     const spacer = document.createTextNode(" ");
-    const bookmark = pendingTrigger;
-    if (bookmark) {
-      // Real browser: insert at the saved caret.
-      bookmark.insertNode(chip);
+    const anchor = tokenAnchor;
+    tokenAnchor = null;
+    if (anchor) {
+      const sel = window.getSelection();
+      const range = anchor.cloneRange();
+      if (sel && sel.rangeCount > 0) {
+        range.setEnd(sel.getRangeAt(0).startContainer, sel.getRangeAt(0).startOffset);
+      }
+      try {
+        range.deleteContents();
+        range.insertNode(chip);
+      } catch {
+        ed.appendChild(chip);
+      }
       chip.after(spacer);
     } else {
-      // No saved caret (e.g. programmatic insert / jsdom): append at the end.
       ed.appendChild(chip);
       ed.appendChild(spacer);
     }
-    pendingTrigger = null;
     const text = serializeEditor(ed);
     setEmpty(false);
     props.onChange(text);
-    // Place the caret after the trailing space. Defer to the next animation
-    // frame: the context menu (Kobalte Dialog) closes on pick and restores
-    // focus to the editor's *pre-open* selection (caret 0), which would
-    // clobber a selection set synchronously. rAF runs after that restore.
     requestAnimationFrame(() => {
+      // Bail if the editor was unmounted (e.g. component torn down between
+      // the pick and the next animation frame, as in jsdom test cleanup).
+      if (!spacer.parentNode) {
+        return;
+      }
       const sel = window.getSelection();
       if (!sel) {
         return;
@@ -88,6 +164,7 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
       after.collapse(true);
       sel.removeAllRanges();
       sel.addRange(after);
+      ed.focus();
     });
   };
 
@@ -95,12 +172,12 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
     clear: () => {
       if (editorRef) {
         editorRef.textContent = "";
-        pendingTrigger = null;
+        tokenAnchor = null;
         emit();
       }
     },
     focus: () => editorRef?.focus(),
-    insertChip,
+    replaceTokenWithChip,
   };
 
   onMount(() => {
@@ -111,24 +188,26 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
     if (composing) {
       return;
     }
+    if (tokenAnchor && MENU_KEYS.has(e.key)) {
+      e.preventDefault();
+      props.onMenuKeyDown?.(e);
+      if (e.key === "Escape") {
+        endToken();
+      }
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       props.onSubmit?.();
       return;
     }
-    // Trigger detection: "/" only at the editor start, "@" anywhere.
-    // preventDefault so the char never enters the DOM — insertChip owns the
-    // mutation against the saved caret bookmark (simpler Range math).
     if (e.key === "/" && editorRef && isAtEditorStart(editorRef)) {
       e.preventDefault();
-      pendingTrigger = saveCaret();
-      props.onTrigger?.({ char: "/" });
+      beginToken("/");
     } else if (e.key === "@") {
       e.preventDefault();
-      pendingTrigger = saveCaret();
-      props.onTrigger?.({ char: "@" });
+      beginToken("@");
     }
-    // Shift+Enter falls through → default contenteditable newline (pre-wrap renders \n).
   };
 
   return (
@@ -149,6 +228,7 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
         )}
         contenteditable={props.disabled ? "false" : "true"}
         data-component="chip-input"
+        onBlur={() => endToken()}
         onCompositionEnd={() => {
           composing = false;
           emit();
@@ -159,7 +239,6 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
         onInput={emit}
         onKeyDown={onKeyDown}
         onPaste={(e) => {
-          // Force plain-text paste (strip HTML, keep text + newlines).
           e.preventDefault();
           const text = e.clipboardData?.getData("text/plain") ?? "";
           document.execCommand("insertText", false, text);

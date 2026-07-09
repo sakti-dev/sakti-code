@@ -1,4 +1,4 @@
-import { createEffect, For, type JSX, Show } from "solid-js";
+import { createEffect, For, on, type JSX, Show } from "solid-js";
 import { cn } from "~/lib/utils";
 import type { ContextMenuMode, Row } from "./context-rows";
 
@@ -31,10 +31,12 @@ export function InlineContextList(props: InlineContextListProps): JSX.Element {
     }
   };
 
-  createEffect(() => {
-    props.activeId;
-    scrollActive();
-  });
+  createEffect(
+    on(
+      () => props.activeId,
+      () => scrollActive(),
+    ),
+  );
 
   return (
     <div

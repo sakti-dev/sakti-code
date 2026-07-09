@@ -1,7 +1,6 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
+import { cleanup, fireEvent, render, screen } from "@solidjs/testing-library";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { ChatInput } from "../chat-input";
-import type { ContextMenuMode } from "../context-menu";
 
 const mockSendPrompt = vi.fn();
 const mockReplyPermission = vi.fn();
@@ -11,49 +10,6 @@ const mockSessionStore = {
     turns: [],
   } as Record<string, unknown>,
 };
-
-// Stub the ContextMenu so these tests verify ChatInput's *wiring* (trigger →
-// open, pick → insertChip, close → refocus) without dragging Kobalte's modal
-// Dialog into jsdom (its dynamic open focus-trap is flaky across repeated
-// opens). The real menu component is covered by context-menu.test.tsx.
-// Stub the ContextMenu so these tests verify ChatInput's *wiring* (trigger →
-// open, pick → insertChip, close → refocus) without dragging Kobalte's modal
-// Dialog into jsdom (its dynamic open focus-trap is flaky across repeated
-// opens). The real menu component is covered by context-menu.test.tsx.
-//
-// NOTE: the open-conditional is a JSX child ternary (not an early return) so
-// Solid reactively shows/hides content — a component body runs only once, so
-// `if (!open) return null` would never re-render when `open` later flips true.
-vi.mock("../context-menu", () => ({
-  ContextMenu: (props: {
-    open: boolean;
-    mode: ContextMenuMode;
-    commands: { name: string }[];
-    onClose: () => void;
-    onPick: (token: string) => void;
-  }) => (
-    <div data-testid="ctx-menu">
-      {props.open ? (
-        <>
-          <div>{props.mode === "/" ? "Commands & Skills" : "Files"}</div>
-          {/* biome-ignore lint/performance/useSolidForComponent: test stub */}
-          {props.commands.map((c) => (
-            <button
-              data-token={`/${c.name}`}
-              onClick={() => {
-                props.onPick(`/${c.name}`);
-                props.onClose();
-              }}
-              type="button"
-            >
-              {c.name}
-            </button>
-          ))}
-        </>
-      ) : null}
-    </div>
-  ),
-}));
 
 vi.mock("~/stores/store-context", () => ({
   useStore: () => ({
@@ -91,7 +47,10 @@ vi.mock("~/stores/store-context", () => ({
               $get: async () => ({
                 ok: true,
                 json: async () => ({
-                  commands: [{ name: "commit", description: "d" }],
+                  commands: [
+                    { name: "commit", description: "d" },
+                    { name: "status", description: "s" },
+                  ],
                   skills: [],
                   agents: [],
                 }),
@@ -127,6 +86,26 @@ vi.mock("~/stores/store-context", () => ({
 function typeInto(editor: HTMLElement, text: string) {
   editor.textContent = text;
   fireEvent.input(editor);
+}
+
+function caretAtStart(editor: HTMLElement) {
+  editor.focus();
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
+function caretAtEnd(editor: HTMLElement) {
+  editor.focus();
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
 }
 
 afterEach(() => {
@@ -197,43 +176,62 @@ describe("ChatInput context menus", () => {
   it("opens the / menu when / is typed at the editor start", async () => {
     render(() => <ChatInput placeholder="p" sessionId="s1" />);
     const editor = screen.getByRole("textbox") as HTMLElement;
+    caretAtStart(editor);
     fireEvent.keyDown(editor, { key: "/" });
-    expect(await screen.findByText("Commands & Skills")).toBeTruthy();
+    expect(await screen.findByText("commit")).toBeTruthy();
+    expect(screen.getByText("Commands")).toBeTruthy();
   });
 
   it("opens the @ menu when @ is typed mid-text", async () => {
     render(() => <ChatInput placeholder="p" sessionId="s1" />);
     const editor = screen.getByRole("textbox") as HTMLElement;
     typeInto(editor, "see ");
+    caretAtEnd(editor);
     fireEvent.keyDown(editor, { key: "@" });
-    expect(await screen.findByText("Files")).toBeTruthy();
+    expect(await screen.findByText("src/a.ts")).toBeTruthy();
   });
 
-  it("inserts the picked token as a chip and refocuses on close (/ mode)", async () => {
+  it("inserts the picked token as a chip (/ mode)", async () => {
     render(() => <ChatInput placeholder="p" sessionId="s1" />);
     const editor = screen.getByRole("textbox") as HTMLElement;
-    // Picking closes the menu → closeMenu refocuses the editor. jsdom won't
-    // move activeElement to a contenteditable div, so assert the wiring: the
-    // editor's focus() is invoked on close.
-    const focusSpy = vi.spyOn(editor, "focus");
+    caretAtStart(editor);
     fireEvent.keyDown(editor, { key: "/" });
     const item = await screen.findByText("commit");
     fireEvent.click(item);
     const chip = editor.querySelector('.chip[data-token="/commit"]');
     expect(chip).toBeTruthy();
-    await waitFor(() => {
-      expect(focusSpy).toHaveBeenCalled();
-    });
-    // Sending yields the wire string with the token.
+    // Sending yields the wire string with the token (trailing space trimmed).
     fireEvent.keyDown(editor, { key: "Enter" });
     expect(mockSendPrompt).toHaveBeenCalledWith("s1", "/commit");
+  });
+
+  it("picks the active / row with Enter (keyboard nav wiring)", async () => {
+    render(() => <ChatInput placeholder="p" sessionId="s1" />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
+    caretAtStart(editor);
+    fireEvent.keyDown(editor, { key: "/" });
+    await screen.findByText("commit");
+    fireEvent.keyDown(editor, { key: "Enter" });
+    expect(editor.querySelector('.chip[data-token="/commit"]')).toBeTruthy();
+  });
+
+  it("moves the active row with arrows before Enter", async () => {
+    render(() => <ChatInput placeholder="p" sessionId="s1" />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
+    caretAtStart(editor);
+    fireEvent.keyDown(editor, { key: "/" });
+    await screen.findByText("commit");
+    fireEvent.keyDown(editor, { key: "ArrowDown" });
+    fireEvent.keyDown(editor, { key: "Enter" });
+    expect(editor.querySelector('.chip[data-token="/status"]')).toBeTruthy();
   });
 
   it("does not open a menu for / typed mid-text", async () => {
     render(() => <ChatInput placeholder="p" sessionId="s1" />);
     const editor = screen.getByRole("textbox") as HTMLElement;
     typeInto(editor, "hi ");
+    caretAtEnd(editor);
     fireEvent.keyDown(editor, { key: "/" });
-    expect(screen.queryByText("Commands & Skills")).toBeNull();
+    expect(screen.queryByText("Commands")).toBeNull();
   });
 });

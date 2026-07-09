@@ -14,11 +14,13 @@ import { cn } from "~/lib/utils";
 import { aggregateUsage } from "~/stores/session/usage-stats";
 import { useStore } from "~/stores/store-context";
 import { ChipInput, type ChipInputApi } from "./chip-input.tsx";
-import { ContextMenu, type ContextMenuMode } from "./context-menu.tsx";
+import { buildRows, type ContextMenuMode } from "./context-rows";
+import { InlineContextList } from "./inline-context-list";
 import { InputFooter } from "./input-footer";
 import { PermissionStrip } from "./permission-strip";
 import { ProfileSelect } from "./profile-select";
 import { SendButton } from "./send-button";
+import { useListNavigation } from "./use-list-navigation.ts";
 
 export interface ChatInputProps {
   disabled?: boolean;
@@ -66,44 +68,84 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   );
 
   // Files for the @ menu — debounced query fetch (server does frecency search).
+  // The source keys off the menu being open + the active project; `@` fetches
+  // even for an empty query (list everything), then narrows as the user types.
   const [filesQuery, setFilesQuery] = createSignal("");
   let filesDebounce: ReturnType<typeof setTimeout> | undefined;
   const onFilesQuery = (q: string) => {
     clearTimeout(filesDebounce);
     filesDebounce = setTimeout(() => setFilesQuery(q), 120);
   };
-  const [files] = createResource(filesQuery, async (q) => {
-    const pid = projectId();
-    if (!pid) {
-      return [];
-    }
-    const res = await api.api.projects[":id"].files.$get({
-      param: { id: pid },
-      query: { query: q },
-    });
-    if (!res.ok) {
-      return [];
-    }
-    const body = await res.json();
-    return body.files as { path: string }[];
-  });
+  const [files] = createResource(
+    () => (menu() === "@" ? { pid: projectId(), q: filesQuery() } : null),
+    async (src) => {
+      if (!src || !src.pid) {
+        return [];
+      }
+      const res = await api.api.projects[":id"].files.$get({
+        param: { id: src.pid },
+        query: { query: src.q },
+      });
+      if (!res.ok) {
+        return [];
+      }
+      const body = await res.json();
+      return body.files as { path: string }[];
+    },
+  );
+
+  // Live token query typed in the editor after the trigger char (null closes).
+  const [tokenQuery, setTokenQuery] = createSignal("");
 
   const closeMenu = () => {
     setMenu(null);
-    // Return focus to the chip editor so the user can keep typing (Escape,
-    // click outside, etc.). The pick path refocuses via insertChip too.
+    setTokenQuery("");
+    clearTimeout(filesDebounce);
+    setFilesQuery("");
     queueMicrotask(() => chipApi?.focus());
   };
 
-  const onTrigger = ({ char }: { char: ContextMenuMode }) => {
-    setMenu(char);
-    // Move focus to the dialog's search input so further typing filters there,
-    // not in the editor.
-    queueMicrotask(() => {
-      const input = document.querySelector("[cmdk-input]") as HTMLInputElement | null;
-      input?.focus();
-    });
+  const pick = (token: string) => {
+    chipApi?.replaceTokenWithChip(token);
+    closeMenu();
   };
+
+  const onTrigger = ({ char }: { char: ContextMenuMode }) => {
+    setTokenQuery("");
+    clearTimeout(filesDebounce);
+    if (char === "@") {
+      // Fetch the initial (empty-query) file list immediately on open.
+      setFilesQuery("");
+    }
+    setMenu(char);
+  };
+
+  // ChipInput reports the live query (null closes the token menu).
+  const onQuery = (q: string | null) => {
+    if (q === null) {
+      closeMenu();
+      return;
+    }
+    setTokenQuery(q);
+    if (menu() === "@") {
+      onFilesQuery(q);
+    }
+  };
+
+  const rows = createMemo(() =>
+    buildRows({
+      mode: menu() ?? "/",
+      query: tokenQuery(),
+      commands: catalog()?.commands ?? [],
+      skills: catalog()?.skills ?? [],
+      files: files() ?? [],
+    }),
+  );
+
+  const nav = useListNavigation(rows, {
+    onPick: (row) => pick(row.token),
+    onClose: () => closeMenu(),
+  });
 
   const isGenerating = createMemo(() => {
     if (!props.sessionId) {
@@ -217,6 +259,14 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
         <Show when={permission()}>
           {(req) => <PermissionStrip onReply={replyPermission} request={req()} />}
         </Show>
+        <Show when={menu()}>
+          <InlineContextList
+            activeId={rows()[nav.activeIndex()]?.id ?? null}
+            mode={menu()!}
+            onPick={(token) => pick(token)}
+            rows={rows()}
+          />
+        </Show>
         <div
           class={cn(
             "flex w-full min-w-0 flex-col gap-3 rounded-xl border p-3 shadow-lg transition-all duration-200",
@@ -233,6 +283,8 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
             onChange={setValue}
             onSubmit={send}
             onTrigger={onTrigger}
+            onQuery={onQuery}
+            onMenuKeyDown={(e) => nav.handleKeyDown(e)}
             placeholder={props.placeholder ?? "Send a message…"}
             registerApi={(a) => (chipApi = a)}
           />
@@ -245,17 +297,6 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
           <InputFooter charCount={() => value().length} stats={sessionStats} />
         </div>
       </div>
-
-      <ContextMenu
-        commands={catalog()?.commands ?? []}
-        files={files() ?? []}
-        mode={menu() ?? "/"}
-        onClose={closeMenu}
-        onFilesQuery={onFilesQuery}
-        onPick={(token) => chipApi?.insertChip(token)}
-        open={menu() !== null}
-        skills={catalog()?.skills ?? []}
-      />
     </div>
   );
 }

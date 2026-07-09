@@ -51,16 +51,17 @@ describe("InlineContextList", () => {
   });
 
   it("scrolls the active row into view when activeId is set", () => {
-    const scrollIntoView = vi.fn();
-    const original = HTMLElement.prototype.scrollIntoView;
-    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    const spy = vi.fn();
+    HTMLElement.prototype.scrollIntoView = spy;
     try {
       render(() => (
         <InlineContextList mode="/" rows={rows} activeId="file:src/a.ts" onPick={vi.fn()} />
       ));
-      expect(scrollIntoView).toHaveBeenCalled();
+      expect(spy).toHaveBeenCalled();
     } finally {
-      HTMLElement.prototype.scrollIntoView = original;
+      // jsdom does not implement scrollIntoView; restore that (typeof guard in
+      // the component then skips it for other tests).
+      HTMLElement.prototype.scrollIntoView = undefined as never;
     }
   });
 });

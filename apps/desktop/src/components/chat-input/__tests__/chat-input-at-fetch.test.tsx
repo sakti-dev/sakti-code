@@ -1,5 +1,4 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
-import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { ChatInput } from "../chat-input";
 
@@ -67,6 +66,33 @@ vi.mock("~/stores/store-context", () => ({
   }),
 }));
 
+function caretAtStart(editor: HTMLElement) {
+  editor.focus();
+  const range = document.createRange();
+  range.selectNodeContents(editor);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel?.removeAllRanges();
+  sel?.addRange(range);
+}
+
+function typeText(editor: HTMLElement, text: string) {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const node = document.createTextNode(text);
+    range.insertNode(node);
+    range.setStartAfter(node);
+    range.setEndAfter(node);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } else {
+    editor.appendChild(document.createTextNode(text));
+  }
+  fireEvent.input(editor);
+}
+
 afterEach(() => {
   cleanup();
   mockFilesGet.mockClear();
@@ -74,22 +100,55 @@ afterEach(() => {
 
 describe("ChatInput @ fetch", () => {
   it("fetches files for the @ query before a session exists (onboarding draft)", async () => {
-    // The onboarding/plan-chat view renders ChatInput with sessionId=null
-    // until the first send (sessions are created lazily to avoid dangling
-    // ones). The @ search must still resolve the project from the store's
-    // activeProjectId and fetch files for the typed query.
     render(() => <ChatInput placeholder="p" sessionId={null} onSend={vi.fn()} />);
     const editor = screen.getByRole("textbox") as HTMLElement;
 
+    caretAtStart(editor);
     fireEvent.keyDown(editor, { key: "@" });
-
-    const input = await screen.findByRole("combobox");
-    await userEvent.type(input, "src");
+    typeText(editor, "src");
 
     await waitFor(() => {
       expect(mockFilesGet).toHaveBeenCalledWith({
         param: { id: "proj1" },
         query: { query: "src" },
+      });
+    });
+  });
+
+  it("lists files even for an empty @ query", async () => {
+    render(() => <ChatInput placeholder="p" sessionId={null} onSend={vi.fn()} />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
+    fireEvent.keyDown(editor, { key: "@" });
+    await waitFor(() => {
+      expect(mockFilesGet).toHaveBeenCalledWith({
+        param: { id: "proj1" },
+        query: { query: "" },
+      });
+    });
+  });
+
+  it("resets the @ file query when reopening the menu", async () => {
+    render(() => <ChatInput placeholder="p" sessionId={null} onSend={vi.fn()} />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
+
+    caretAtStart(editor);
+    fireEvent.keyDown(editor, { key: "@" });
+    typeText(editor, "src");
+    await waitFor(() => {
+      expect(mockFilesGet).toHaveBeenCalledWith({
+        param: { id: "proj1" },
+        query: { query: "src" },
+      });
+    });
+
+    fireEvent.keyDown(editor, { key: "Escape" });
+    mockFilesGet.mockClear();
+    fireEvent.keyDown(editor, { key: "@" });
+
+    await waitFor(() => {
+      expect(mockFilesGet).toHaveBeenCalledWith({
+        param: { id: "proj1" },
+        query: { query: "" },
       });
     });
   });
