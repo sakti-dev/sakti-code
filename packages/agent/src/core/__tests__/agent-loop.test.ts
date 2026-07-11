@@ -6,6 +6,7 @@ import type {
   StreamResult,
   Usage,
 } from "@sakti-code/llm";
+import { isRetryableAssistantError } from "@sakti-code/llm";
 import { Type } from "typebox";
 import { describe, expect, it } from "vite-plus/test";
 import { agentLoop, agentLoopContinue } from "../../core/agent-loop";
@@ -256,6 +257,47 @@ describe("agentLoop with AgentMessage", () => {
     );
     expect(thinking).toBeDefined();
     expect((thinking as { thinkingSignature?: string }).thinkingSignature).toBe("sig-abc-123");
+  });
+
+  it("treats a zero-content finish as a retryable error (silent-empty hardening)", async () => {
+    // A provider can return a successful stream that finishes with zero
+    // content and zero output tokens (e.g. z.ai returning finish "length"
+    // with input=0/output=0 on a request nowhere near the context limit).
+    // This is a failed request, not a valid empty completion — it must
+    // surface as a retryable error so the retry loop can back off and retry,
+    // instead of ending the turn with an empty message that leaves the UI
+    // buffering forever.
+    const streamFn: StreamFn = () =>
+      Promise.resolve({
+        fullStream: (async function* () {
+          // No content parts — just an empty stream that finishes.
+        })(),
+        result: Promise.resolve({
+          finishReason: "length" as const,
+          usage: createUsage(),
+        }),
+      });
+
+    const context: AgentContext = {
+      systemPrompt: "x",
+      messages: [],
+      tools: [],
+    };
+    const config: AgentLoopConfig = {
+      model: createModel(),
+      convertToLlm: identityConverter,
+    };
+
+    const stream = agentLoop([createUserMessage("Hi")], context, config, undefined, streamFn);
+    for await (const _event of stream) {
+      void _event;
+    }
+    const messages = await stream.result();
+    const assistant = messages[1] as AssistantMessage;
+
+    expect(assistant.stopReason).toBe("error");
+    expect(assistant.errorMessage).toBeTruthy();
+    expect(isRetryableAssistantError(assistant)).toBe(true);
   });
 
   it("annotates thinking content with startedAt and endedAt", async () => {

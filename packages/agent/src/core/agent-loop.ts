@@ -768,6 +768,25 @@ const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
     finish = { usage: EMPTY_USAGE, finishReason: "error" };
   }
 
+  // Silent-empty hardening: a provider can return a successful stream that
+  // finishes with zero content and zero output tokens (e.g. z.ai returning
+  // finish "length" with input=0/output=0 on a request nowhere near the
+  // context limit). That is a failed request, not a valid empty completion —
+  // synthesize a retryable error so the retry loop backs off and retries,
+  // instead of ending the turn with an empty message that leaves the UI
+  // buffering forever. Mirrors the explicit stream-error path above.
+  if (content.length === 0 && streamError === undefined) {
+    streamError = new Error(
+      `provider returned an empty response — stream ended without content (finish: ${finish.finishReason})`,
+    );
+    config.logger?.error("silent empty response", streamError, {
+      model: config.model.id,
+      provider: config.model.provider,
+      finishReason: finish.finishReason,
+      usage: finish.usage,
+    });
+  }
+
   const finalMessage: AssistantMessage = {
     role: "assistant",
     content: content.length > 0 ? content : [{ type: "text", text: "" }],
