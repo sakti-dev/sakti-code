@@ -479,8 +479,8 @@ export function runPromptEffect(
       });
     }
     // The read-only project OM block — always built (resource-scope record
-    // keyed at threadId=null, resourceId=projectId). Missions get own-OM + this;
-    // plans get only this.
+    // keyed at threadId=null, resourceId=projectId). Every session (plan or
+    // mission) gets own-OM + this; the two compose in the agent loop.
     const omReadOnly = {
       getObservationsBlocks: async () => {
         const record = await omStorage.getObservationalMemory(null, session.projectId);
