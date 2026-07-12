@@ -544,4 +544,28 @@ describe("WS client", () => {
     expect(session.store.retry).toBeNull();
     ws.disconnect();
   });
+
+  it("error frame sets phase to error even with no current message", () => {
+    const deps = makeDeps();
+    const { api, fake } = makeMockApi();
+    const ws = createWsClient(api, deps);
+
+    fake.fireOpen();
+    const session = deps.sessionRegistry.get("s1");
+
+    // agent_start sets phase to "thinking" but no assistant message exists yet.
+    fake.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_start" },
+    });
+    expect(session.store.streaming.phase).toBe("thinking");
+    expect(session.store.streaming.currentMessageId).toBeNull();
+
+    // Error arrives before any message streamed — phase must still become "error".
+    fake.fireMessage({ type: "error", sessionId: "s1", error: "auth failed" });
+
+    expect(session.store.streaming.phase).toBe("error");
+    ws.disconnect();
+  });
 });

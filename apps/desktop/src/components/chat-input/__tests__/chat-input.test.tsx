@@ -4,6 +4,7 @@ import { ChatInput } from "../chat-input";
 
 const mockSendPrompt = vi.fn();
 const mockReplyPermission = vi.fn();
+const mockAbortRun = vi.fn();
 const mockSessionStore = {
   current: {
     streaming: { phase: "idle" },
@@ -16,6 +17,7 @@ vi.mock("~/stores/store-context", () => ({
     actions: {
       sendPrompt: mockSendPrompt,
       replyPermission: mockReplyPermission,
+      abortRun: mockAbortRun,
     },
     sessions: {
       get: () => ({ store: mockSessionStore.current }),
@@ -116,6 +118,7 @@ afterEach(() => {
   };
   mockSendPrompt.mockClear();
   mockReplyPermission.mockClear();
+  mockAbortRun.mockClear();
 });
 
 describe("ChatInput", () => {
@@ -169,6 +172,29 @@ describe("ChatInput", () => {
     render(() => <ChatInput sessionId="s1" />);
     fireEvent.click(screen.getByRole("button", { name: "Allow" }));
     expect(mockReplyPermission).toHaveBeenCalledWith("s1", "per_1", "once");
+  });
+
+  it("Escape calls abortRun when the agent is generating", () => {
+    mockSessionStore.current = {
+      streaming: { phase: "thinking" },
+      turns: [],
+    };
+    render(() => <ChatInput sessionId="s1" />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
+    fireEvent.keyDown(editor, { key: "Escape" });
+    expect(mockAbortRun).toHaveBeenCalledTimes(1);
+    expect(mockAbortRun).toHaveBeenCalledWith("s1");
+  });
+
+  it("Escape does NOT call abortRun when the agent is idle", () => {
+    mockSessionStore.current = {
+      streaming: { phase: "idle" },
+      turns: [],
+    };
+    render(() => <ChatInput sessionId="s1" />);
+    const editor = screen.getByRole("textbox") as HTMLElement;
+    fireEvent.keyDown(editor, { key: "Escape" });
+    expect(mockAbortRun).not.toHaveBeenCalled();
   });
 });
 

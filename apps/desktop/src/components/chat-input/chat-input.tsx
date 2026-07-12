@@ -267,7 +267,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
   };
 
   const abort = () => {
-    if (props.sessionId) {
+    if (props.sessionId && isGenerating()) {
       actions.abortRun(props.sessionId);
     }
   };

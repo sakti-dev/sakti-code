@@ -107,6 +107,12 @@ export function createWsClient(api: WsConnectable, deps: WsClientDeps): WsClient
         const msgId = session.store.streaming.currentMessageId;
         if (msgId) {
           session.actions.setError(msgId, data.error);
+        } else {
+          // No streaming message to attach the error to (e.g. the LLM call
+          // failed before any assistant message was created). setError is the
+          // only action that transitions phase to "error", so set it explicitly
+          // — otherwise phase stays "thinking" and isGenerating() never clears.
+          session.actions.setPhase("error");
         }
         session.actions.finalizeTurn(Date.now());
         session.actions.clearCurrentMessage();
