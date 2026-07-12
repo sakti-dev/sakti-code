@@ -138,6 +138,24 @@ export function createWsClient(api: WsConnectable, deps: WsClientDeps): WsClient
         sessionRegistry.get(data.sessionId).actions.setPermission(null);
         break;
       }
+
+      case "transition_resolved": {
+        const session = sessionRegistry.get(data.sessionId);
+        if (data.mode === "gate") {
+          session.actions.setPendingTransition({
+            to: data.to,
+            body: data.body ?? "",
+          });
+        } else {
+          session.actions.clearPendingTransition();
+        }
+        if (data.status) {
+          server.actions.updateSession(data.sessionId, {
+            status: data.status as ServerStoreData["sessions"][string]["status"],
+          });
+        }
+        break;
+      }
     }
   }
 

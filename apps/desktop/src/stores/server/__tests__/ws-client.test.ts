@@ -281,4 +281,84 @@ describe("WS client", () => {
     expect(isStreaming()).toBe(false);
     ws.disconnect();
   });
+
+  it("transition_resolved {mode:gate} sets pendingTransition + updates status", () => {
+    const deps = makeDeps();
+    const { api, fake } = makeMockApi();
+    const ws = createWsClient(api, deps);
+    const session = deps.sessionRegistry.get("s-gate");
+    deps.serverStore.actions.addSession({
+      id: "s-gate",
+      projectId: "p1",
+      title: null,
+      modelId: null,
+      profileId: null,
+      thinkingLevel: "off",
+      kind: "mission",
+      parentSessionId: null,
+      changeName: null,
+      worktreePath: null,
+      pendingTransitionTo: null,
+      pendingTransitionBody: null,
+      status: "specify",
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    fake.fireOpen();
+    fake.fireMessage({
+      type: "transition_resolved",
+      sessionId: "s-gate",
+      to: "build",
+      mode: "gate",
+      status: "specify",
+      body: "spec summary",
+    });
+
+    expect(session.store.pendingTransition).toMatchObject({
+      to: "build",
+      body: "spec summary",
+    });
+
+    ws.disconnect();
+  });
+
+  it("transition_resolved {mode:auto} clears pendingTransition + updates status", () => {
+    const deps = makeDeps();
+    const { api, fake } = makeMockApi();
+    const ws = createWsClient(api, deps);
+    const session = deps.sessionRegistry.get("s-auto");
+    session.actions.setPendingTransition({ to: "verify", body: "done" });
+    deps.serverStore.actions.addSession({
+      id: "s-auto",
+      projectId: "p1",
+      title: null,
+      modelId: null,
+      profileId: null,
+      thinkingLevel: "off",
+      kind: "mission",
+      parentSessionId: null,
+      changeName: null,
+      worktreePath: null,
+      pendingTransitionTo: "verify",
+      pendingTransitionBody: "done",
+      status: "build",
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    fake.fireOpen();
+    fake.fireMessage({
+      type: "transition_resolved",
+      sessionId: "s-auto",
+      to: "verify",
+      mode: "auto",
+      status: "verify",
+    });
+
+    expect(session.store.pendingTransition).toBeNull();
+    expect(deps.serverStore.store.sessions["s-auto"]?.status).toBe("verify");
+
+    ws.disconnect();
+  });
 });
