@@ -138,10 +138,8 @@ describe("runAgentStream auto-chain across auto-edges", () => {
 
     try {
       await runAgentStream(ctx, session.id, "go", storage, { send: () => {} });
-      // Autonomous build stalls re-run with a reminder, up to the cap, then stop.
-      // The exact count is the cap; assert it did NOT loop forever (bounded).
-      expect(calls).toBeLessThan(6);
-      expect(calls).toBeGreaterThanOrEqual(1);
+      // User-initiated run (1) + 2 reminder-driven stalls (2, 3) = 3 total, then stops.
+      expect(calls).toBe(3);
     } finally {
       spy.mockRestore();
     }
@@ -533,6 +531,137 @@ describe("runAgentStream auto-chain across auto-edges", () => {
     } finally {
       runSpy.mockRestore();
       applySpy.mockRestore();
+    }
+  });
+
+  it("does NOT inject reminder when user chats at a pending verify→archive gate", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("gate-chat", "/tmp/gate-chat");
+    const session = await ctx.repos.sessions.create(project.id, { status: "verify" });
+    // Simulate a pending gate that the user is dismissing by chatting.
+    await ctx.repos.sessions.update(session.id, {
+      pendingTransitionTo: "archive",
+      pendingTransitionBody: "verify clean",
+    });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    let calls = 0;
+    const messages: string[] = [];
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    spy.mockImplementation(async (_ctx: unknown, _sid: string, msg: string) => {
+      calls++;
+      messages.push(msg);
+      // Agent discusses with the user — no transition.
+    });
+
+    try {
+      await runAgentStream(ctx, session.id, "wait, let me check first", storage, {
+        send: () => {},
+      });
+      // User-initiated chat at a pending gate: exactly 1 run, NO reminder.
+      expect(calls).toBe(1);
+      expect(messages[0]).toBe("wait, let me check first");
+      expect(messages.some((m) => m.includes("<reminder"))).toBe(false);
+      // Pending transition was cleared.
+      expect(ctx.repos.sessions.findById(session.id)?.pendingTransitionTo).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("does NOT inject reminder on first user-initiated run in verify (no pending gate)", async () => {
+    // When the user sends the very first message in verify (no pending gate,
+    // no prior transition), it's still a user-initiated run — but this time
+    // hadPendingGate is false, so the reminder CAN fire if the agent stalls.
+    // This test verifies the reminder DOES fire for a genuine stall in verify.
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("verify-stall", "/tmp/verify-stall");
+    const session = await ctx.repos.sessions.create(project.id, { status: "verify" });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    let calls = 0;
+    const messages: string[] = [];
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    spy.mockImplementation(async (_ctx: unknown, _sid: string, msg: string) => {
+      calls++;
+      messages.push(msg);
+    });
+
+    try {
+      await runAgentStream(ctx, session.id, "verify the implementation", storage, {
+        send: () => {},
+      });
+      // First run (user) + 2 reminder stalls = 3 total.
+      expect(calls).toBe(3);
+      expect(messages[1]).toContain("<reminder");
+      expect(messages[1]).toContain('phase="verify"');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("emits a stalled event when the reminder cap is reached", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("stalled", "/tmp/stalled");
+    const session = await ctx.repos.sessions.create(project.id, { status: "build" });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    spy.mockImplementation(async () => {
+      // Always stalls — never transitions.
+    });
+
+    const frames: unknown[] = [];
+    try {
+      await runAgentStream(ctx, session.id, "go", storage, {
+        send: (frame) => frames.push(frame),
+      });
+      const stalled = frames.find((f) => (f as { type?: string }).type === "stalled");
+      expect(stalled).toBeDefined();
+      expect(stalled).toMatchObject({
+        type: "stalled",
+        sessionId: session.id,
+        phase: "build",
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("does NOT emit stalled when user chats at a pending gate", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("no-stall", "/tmp/no-stall");
+    const session = await ctx.repos.sessions.create(project.id, { status: "verify" });
+    await ctx.repos.sessions.update(session.id, {
+      pendingTransitionTo: "archive",
+      pendingTransitionBody: "clean",
+    });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    spy.mockImplementation(async () => {});
+
+    const frames: unknown[] = [];
+    try {
+      await runAgentStream(ctx, session.id, "chat", storage, {
+        send: (frame) => frames.push(frame),
+      });
+      const stalled = frames.find((f) => (f as { type?: string }).type === "stalled");
+      expect(stalled).toBeUndefined();
+    } finally {
+      spy.mockRestore();
     }
   });
 });

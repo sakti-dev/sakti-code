@@ -164,6 +164,17 @@ export function createWsClient(api: WsConnectable, deps: WsClientDeps): WsClient
         });
         break;
       }
+
+      case "stalled": {
+        // The autonomous agent hit the reminder cap without a transition.
+        // Clear all transient streaming state so the UI isn't stuck.
+        const session = sessionRegistry.get(data.sessionId);
+        session.actions.clearCurrentMessage();
+        session.actions.clearCurrentTool();
+        session.actions.setRetry(null);
+        setIsStreaming(false);
+        break;
+      }
     }
   }
 

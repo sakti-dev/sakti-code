@@ -123,6 +123,13 @@ export interface TransitionResolvedFrame {
   type: "transition_resolved";
 }
 
+/** Autonomous agent stalled (hit the reminder cap without a transition). */
+export interface StalledFrame {
+  phase: string;
+  sessionId: string;
+  type: "stalled";
+}
+
 export type WsOut =
   | EventFrame
   | ErrorFrame
@@ -130,7 +137,8 @@ export type WsOut =
   | PushFrame
   | PermissionAskedFrame
   | PermissionRepliedFrame
-  | TransitionResolvedFrame;
+  | TransitionResolvedFrame
+  | StalledFrame;
 
 export interface WsHandle {
   send(data: unknown): void;
@@ -328,6 +336,12 @@ export async function runAgentStream(
   let depth = 0;
   let stalls = 0;
 
+  // If the user sent this message while a gate was pending (e.g. verify→archive),
+  // the run is a conversational resume — the agent should respond freely without
+  // stall reminders. Only autonomous stalls (no pending gate cleared) get nudges.
+  // Spec: PHASE-WORKFLOW.md lines 96-98, 121-135.
+  const hadPendingGate = current?.pendingTransitionTo != null;
+
   while (true) {
     const turn = ctx.repos.turns.create(sessionId, Date.now());
     if (storage instanceof SqliteSessionStorage) {
@@ -416,13 +430,30 @@ export async function runAgentStream(
       // inject a phase-aware <reminder> and re-run, up to a cap, so a stuck
       // agent gets nudged (oh-my-pi style) without looping forever. Interactive
       // phases (specify/plan) legitimately pause — no reminder.
+      //
+      // Exception: if the user sent this message while a gate was pending
+      // (hadPendingGate), the run is conversational — the agent is responding
+      // to the user's chat, not stalling. Skip the reminder entirely.
       const phase = autonomousPhaseForSession(session);
-      if (phase && stalls < MAX_REMINDERS) {
+      if (phase && stalls < MAX_REMINDERS && !hadPendingGate) {
         stalls++;
         currentMessage = await buildProgressAwareReminder(ctx, session, phase, stalls);
         continue;
       }
-      return; // interactive phase, or stall cap reached — surface to the user
+      // Stall cap reached, interactive phase, or gate chat — surface to user.
+      if (phase && stalls >= MAX_REMINDERS) {
+        ws.send({
+          phase,
+          sessionId,
+          type: "stalled",
+        } satisfies StalledFrame);
+        log?.info?.("agent stalled — surfacing to user", {
+          sessionId,
+          phase,
+          stalls,
+        });
+      }
+      return;
     }
     // A transition happened — reset the stall counter for the new phase.
     stalls = 0;
