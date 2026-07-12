@@ -282,4 +282,112 @@ describe("runAgentStream auto-chain across auto-edges", () => {
       spy.mockRestore();
     }
   });
+
+  it("emits transition_resolved {mode:gate} for verify→archive gate edge", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("gate-frame", "/tmp/gate-frame");
+    const session = await ctx.repos.sessions.create(project.id, { status: "verify" });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    spy.mockImplementation(async (ctx2: unknown, sid: string) => {
+      const c = ctx2 as {
+        repos: { sessions: { update: (id: string, d: object) => Promise<unknown> } };
+      };
+      await c.repos.sessions.update(sid, {
+        pendingTransitionTo: "archive",
+        pendingTransitionBody: "verify clean",
+      });
+    });
+
+    const frames: unknown[] = [];
+    try {
+      await runAgentStream(ctx, session.id, "verify", storage, {
+        send: (frame) => frames.push(frame),
+      });
+      const resolved = frames.find((f) => (f as { type?: string }).type === "transition_resolved");
+      expect(resolved).toBeDefined();
+      expect(resolved).toMatchObject({
+        type: "transition_resolved",
+        sessionId: session.id,
+        to: "archive",
+        mode: "gate",
+        status: "verify",
+        body: "verify clean",
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("emits transition_resolved {mode:auto} for build→verify auto edge", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("auto-frame", "/tmp/auto-frame");
+    const session = await ctx.repos.sessions.create(project.id, { status: "build" });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    let calls = 0;
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    spy.mockImplementation(async (ctx2: unknown, sid: string) => {
+      calls++;
+      if (calls === 1) {
+        const c = ctx2 as {
+          repos: { sessions: { update: (id: string, d: object) => Promise<unknown> } };
+        };
+        await c.repos.sessions.update(sid, {
+          pendingTransitionTo: "verify",
+          pendingTransitionBody: "done",
+        });
+      }
+    });
+
+    const frames: unknown[] = [];
+    try {
+      await runAgentStream(ctx, session.id, "go", storage, {
+        send: (frame) => frames.push(frame),
+      });
+      const resolved = frames.find((f) => (f as { type?: string }).type === "transition_resolved");
+      expect(resolved).toBeDefined();
+      expect(resolved).toMatchObject({
+        type: "transition_resolved",
+        sessionId: session.id,
+        to: "verify",
+        mode: "auto",
+        status: "verify",
+      });
+      expect(resolved).not.toHaveProperty("body");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("does NOT emit transition_resolved when no transition was called", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("no-trans", "/tmp/no-trans");
+    const session = await ctx.repos.sessions.create(project.id, { status: "specify" });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    spy.mockImplementation(async () => {});
+
+    const frames: unknown[] = [];
+    try {
+      await runAgentStream(ctx, session.id, "design", storage, {
+        send: (frame) => frames.push(frame),
+      });
+      const resolved = frames.find((f) => (f as { type?: string }).type === "transition_resolved");
+      expect(resolved).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });

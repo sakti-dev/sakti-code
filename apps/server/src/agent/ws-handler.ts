@@ -419,7 +419,17 @@ export async function runAgentStream(
       return;
     }
     const edge = getEdge(from, destPhase);
-    if (edge.mode === "gate") return; // pause for the confirm route
+    if (edge.mode === "gate") {
+      ws.send({
+        body: session.pendingTransitionBody ?? "",
+        mode: "gate",
+        sessionId,
+        status: session.status,
+        to: dest,
+        type: "transition_resolved",
+      } satisfies TransitionResolvedFrame);
+      return; // pause for the confirm route
+    }
 
     // AUTO edge: apply side-effects (status flip, forced observe, graduation),
     // clear pending, and chain into the next phase's run.
@@ -449,6 +459,15 @@ export async function runAgentStream(
       await clearPendingTransition(ctx, sessionId);
       return;
     }
+    // Sync the desktop: status flipped, auto-chain applied, no card.
+    const updated = ctx.repos.sessions.findById(sessionId);
+    ws.send({
+      mode: "auto",
+      sessionId,
+      status: updated?.status ?? edge.statusTarget ?? session.status,
+      to: dest,
+      type: "transition_resolved",
+    } satisfies TransitionResolvedFrame);
     // The <instruction> block orients the next phase's run; the transition
     // body (fixing plan / completion summary) is already in the transcript
     // from the tool call.
