@@ -453,4 +453,95 @@ describe("WS client", () => {
     expect(session.store.streaming.currentMessageId).toBeNull();
     ws.disconnect();
   });
+
+  it("abort event clears retry state (Cancel button path)", () => {
+    const deps = makeDeps();
+    const { api, fake } = makeMockApi();
+    const ws = createWsClient(api, deps);
+
+    fake.fireOpen();
+    const session = deps.sessionRegistry.get("s1");
+
+    fake.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_start" },
+    });
+    session.actions.setRetry({
+      attempt: 1,
+      delayMs: 2000,
+      errorMessage: "429 rate limited",
+      maxAttempts: 3,
+    });
+
+    fake.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "abort", clearedSteer: [], clearedFollowUp: [] },
+    });
+
+    expect(session.store.retry).toBeNull();
+    expect(session.store.streaming.phase).toBe("idle");
+    ws.disconnect();
+  });
+
+  it("auto_retry_end clears retry state", () => {
+    const deps = makeDeps();
+    const { api, fake } = makeMockApi();
+    const ws = createWsClient(api, deps);
+
+    fake.fireOpen();
+    const session = deps.sessionRegistry.get("s1");
+
+    fake.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_start" },
+    });
+    session.actions.setRetry({
+      attempt: 1,
+      delayMs: 2000,
+      errorMessage: "429 rate limited",
+      maxAttempts: 3,
+    });
+
+    fake.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "auto_retry_end", success: true, attempt: 1 },
+    });
+
+    expect(session.store.retry).toBeNull();
+    ws.disconnect();
+  });
+
+  it("agent_end clears retry state", () => {
+    const deps = makeDeps();
+    const { api, fake } = makeMockApi();
+    const ws = createWsClient(api, deps);
+
+    fake.fireOpen();
+    const session = deps.sessionRegistry.get("s1");
+
+    fake.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_start" },
+    });
+    session.actions.setRetry({
+      attempt: 1,
+      delayMs: 2000,
+      errorMessage: "429 rate limited",
+      maxAttempts: 3,
+    });
+
+    fake.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_end", messages: [] },
+    });
+
+    expect(session.store.retry).toBeNull();
+    ws.disconnect();
+  });
 });
