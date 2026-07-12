@@ -113,13 +113,24 @@ export interface PermissionRepliedFrame {
   type: "permission.replied";
 }
 
+/** Server has resolved a transition edge. Gate = show card; auto = sync status, no card. */
+export interface TransitionResolvedFrame {
+  body?: string;
+  mode: "gate" | "auto";
+  sessionId: string;
+  status: string;
+  to: string;
+  type: "transition_resolved";
+}
+
 export type WsOut =
   | EventFrame
   | ErrorFrame
   | WelcomeFrame
   | PushFrame
   | PermissionAskedFrame
-  | PermissionRepliedFrame;
+  | PermissionRepliedFrame
+  | TransitionResolvedFrame;
 
 export interface WsHandle {
   send(data: unknown): void;
@@ -191,6 +202,14 @@ export const wsResponseSchema = Type.Union([
       exitCode: Type.Number(),
       signal: Type.Optional(Type.Union([Type.Number(), Type.String()])),
     }),
+  }),
+  Type.Object({
+    type: Type.Literal("transition_resolved"),
+    sessionId: Type.String(),
+    to: Type.String(),
+    mode: Type.Union([Type.Literal("gate"), Type.Literal("auto")]),
+    status: Type.String(),
+    body: Type.Optional(Type.String()),
   }),
 ]);
 

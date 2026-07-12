@@ -1,5 +1,7 @@
+import { Compile } from "typebox/compile";
 import { describe, expect, it } from "vite-plus/test";
 import type { WsIn, WsOut } from "../ws-handler.ts";
+import { wsResponseSchema } from "../ws-handler.ts";
 
 describe("WS frame types", () => {
   it("WsIn accepts prompt message", () => {
@@ -51,5 +53,47 @@ describe("WS frame types", () => {
       },
     ];
     expect(out).toHaveLength(2);
+  });
+
+  it("WsOut includes transition_resolved frame for gate and auto modes", () => {
+    const frames: WsOut[] = [
+      {
+        type: "transition_resolved",
+        sessionId: "s1",
+        to: "build",
+        mode: "gate",
+        status: "specify",
+        body: "spec summary",
+      },
+      {
+        type: "transition_resolved",
+        sessionId: "s1",
+        to: "verify",
+        mode: "auto",
+        status: "verify",
+      },
+    ];
+    expect(frames).toHaveLength(2);
+  });
+
+  it("wsResponseSchema validates transition_resolved frames", () => {
+    const checker = Compile(wsResponseSchema);
+    const gateFrame = {
+      type: "transition_resolved",
+      sessionId: "s1",
+      to: "build",
+      mode: "gate",
+      status: "specify",
+      body: "spec summary",
+    };
+    const autoFrame = {
+      type: "transition_resolved",
+      sessionId: "s1",
+      to: "verify",
+      mode: "auto",
+      status: "verify",
+    };
+    expect(checker.Check(gateFrame)).toBe(true);
+    expect(checker.Check(autoFrame)).toBe(true);
   });
 });
