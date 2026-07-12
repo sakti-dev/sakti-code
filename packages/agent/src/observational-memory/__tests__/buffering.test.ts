@@ -584,6 +584,44 @@ describe("ObservationalMemoryEngine buffering", () => {
       expect(obsEntries.some((e) => e.summary.includes("First observation"))).toBe(true);
       expect(activated.bufferedObservationChunks ?? []).toHaveLength(0);
     });
+
+    it("activates buffered chunks at observationBufferActivation ratio, below sync threshold", async () => {
+      // Threshold=100, activation ratio=0.5 → activation at 50 tokens.
+      // Buffer interval=20. A message of ~60 tokens is above activation (50)
+      // but below sync threshold (100). After buffering fires and completes,
+      // the next maybeObserve should activate — NOT wait for 100 tokens.
+      const deps = createDeps(storage, sessionStorage, {
+        observationBufferTokens: 20,
+        observationBufferActivation: 0.5,
+        reflectionBufferActivation: 1,
+      });
+      const engine = new ObservationalMemoryEngine({ deps });
+
+      const record = await engine.getOrCreateRecord();
+      const t0 = Date.now();
+      // ~60 tokens: above activation threshold (50), below sync threshold (100).
+      const messages: AgentMessage[] = [{ role: "user", content: "a".repeat(250), timestamp: t0 }];
+      sessionStorage.setEntries([createMessageEntry(messages[0]!)]);
+      setCompleteResponse(`<observations>\n* 🔴 Buffered observation\n</observations>`);
+
+      // First maybeObserve: triggers detached buffering, returns immediately.
+      await engine.maybeObserve(record);
+      await engine.waitForBuffering(2_000);
+
+      // Verify chunk was stored.
+      const afterBuffer = await engine.getOrCreateRecord();
+      expect(afterBuffer.bufferedObservationChunks).toHaveLength(1);
+      expect(afterBuffer.activeObservations).toBe("");
+
+      // Second maybeObserve: pendingTokens (~60) >= activationThreshold (50),
+      // but < sync threshold (100). Should activate buffered chunks.
+      const result = await engine.maybeObserve(afterBuffer);
+
+      // Thread scope: activation creates ObservationEntry tree entries.
+      const obsEntries = await Effect.runPromise(sessionStorage.findEntries("observation"));
+      expect(obsEntries.some((e) => e.summary.includes("Buffered observation"))).toBe(true);
+      expect(result.bufferedObservationChunks ?? []).toHaveLength(0);
+    });
   });
 
   describe("buffered reflection", () => {

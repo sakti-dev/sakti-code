@@ -170,8 +170,14 @@ export class ObservationalMemoryEngine {
     let result: ObservationalMemoryRecord;
     try {
       if (this.bufferingCoordinator.isAsyncObservationEnabled()) {
-        // Over threshold: try to activate any buffered chunks first, then sync observe.
+        const activationRatio = this.deps.buffering?.observationBufferActivation ?? 1;
+        const activationThreshold = threshold * activationRatio;
+        const hasBufferedChunks =
+          record.bufferedObservationChunks !== undefined &&
+          record.bufferedObservationChunks.length > 0;
+
         if (pendingTokens >= threshold) {
+          // Over sync threshold: activate buffered chunks first, then sync observe.
           const activated = await this.maybeActivateBufferedObservations(record);
           const afterActivate =
             activated.id === record.id ? activated : await this.getOrCreateRecord();
@@ -183,6 +189,12 @@ export class ObservationalMemoryEngine {
           } else {
             result = afterActivate;
           }
+        } else if (hasBufferedChunks && pendingTokens >= activationThreshold) {
+          // Below sync threshold but above activation ratio: apply buffered
+          // chunks to the context so observations are injected and observed
+          // messages are pruned before the full threshold is reached.
+          const activated = await this.maybeActivateBufferedObservations(record);
+          result = activated.id === record.id ? activated : await this.getOrCreateRecord();
         } else if (
           this.bufferingCoordinator.shouldTriggerAsyncObservation(pendingTokens, record, threshold)
         ) {

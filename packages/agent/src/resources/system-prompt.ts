@@ -21,6 +21,7 @@ export function formatEnvironmentBlock(env: EnvironmentInfo): string {
     "Here is some useful information about the environment you are running in:",
     "<env>",
     `  Working directory: ${env.workingDirectory}`,
+    `  You are already here — do not prepend \`cd ${env.workingDirectory}\` to bash commands. Use \`cd\` only to enter a subdirectory.`,
     `  Is directory a git repo: ${env.isGitRepo ? "yes" : "no"}`,
     `  Platform: ${env.platform}`,
     `  Today's date: ${env.date}`,

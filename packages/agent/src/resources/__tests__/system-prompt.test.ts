@@ -359,6 +359,7 @@ describe("formatEnvironmentBlock", () => {
         "Here is some useful information about the environment you are running in:",
         "<env>",
         "  Working directory: /home/user/project",
+        "  You are already here — do not prepend `cd /home/user/project` to bash commands. Use `cd` only to enter a subdirectory.",
         "  Is directory a git repo: yes",
         "  Platform: linux",
         "  Today's date: Sun Jul 05 2026",
