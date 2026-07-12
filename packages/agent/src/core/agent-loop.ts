@@ -577,7 +577,6 @@ const streamAssistantResponse = Effect.fn("agent-loop.streamAssistantResponse")(
         ...(resolvedApiKey === undefined ? {} : { apiKey: resolvedApiKey }),
         ...(config.headers ? { headers: config.headers } : {}),
         ...(config.sessionId ? { sessionId: config.sessionId } : {}),
-        maxOutputTokens: config.model.maxTokens,
         ...(signal ? { abortSignal: signal } : {}),
       }),
     ),

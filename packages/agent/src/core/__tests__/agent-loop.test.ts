@@ -1979,7 +1979,16 @@ describe("agentLoopContinue with AgentMessage", () => {
 });
 
 describe("agentLoop maxOutputTokens", () => {
-  it("passes model.maxTokens as maxOutputTokens to the stream function", async () => {
+  // The loop must NOT send `maxOutputTokens = model.maxTokens`. That reserves the
+  // model's full output ceiling (e.g. 131072 for glm-5-turbo) on every request,
+  // leaving only `contextWindow − maxTokens` (~67k of 200k) for input. Once a
+  // session crosses that, every request fails deterministically with
+  // `finish: "length"`, 0 tokens (input + reserved_output > contextWindow).
+  //
+  // Omitting maxOutputTokens lets each provider apply its own sane default
+  // (z.ai wrapper: `?? 4096`), matching the mastracode design (which never sets
+  // maxOutputTokens anywhere). See docs/plans/2026-07-12-omit-max-output-tokens.md.
+  it("omits maxOutputTokens so the provider default applies", async () => {
     const context: AgentContext = {
       systemPrompt: "You are helpful.",
       messages: [],
@@ -1987,7 +1996,7 @@ describe("agentLoop maxOutputTokens", () => {
     };
 
     const model = createModel();
-    model.maxTokens = 8192;
+    model.maxTokens = 8192; // would previously have been sent verbatim
 
     const config: AgentLoopConfig = {
       model,
@@ -2005,7 +2014,7 @@ describe("agentLoop maxOutputTokens", () => {
       // drain
     }
 
-    expect(capturedReq?.maxOutputTokens).toBe(8192);
+    expect(capturedReq?.maxOutputTokens).toBeUndefined();
   });
 
   it("terminates the stream with an error when the loop rejects (C1+C2)", async () => {
