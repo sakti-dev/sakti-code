@@ -719,4 +719,86 @@ describe("actions", () => {
       expect(deps.serverStore.store.sessions.s1).toBeUndefined();
     });
   });
+
+  describe("loadChat — pendingTransition re-derivation", () => {
+    it("re-derives pendingTransition from server meta (gate survives reload)", async () => {
+      const deps = makeDeps();
+      deps.serverStore.actions.addSession({
+        id: "s-rehydrate",
+        projectId: "p1",
+        title: null,
+        modelId: null,
+        profileId: null,
+        thinkingLevel: "off",
+        kind: "mission",
+        parentSessionId: null,
+        changeName: null,
+        worktreePath: null,
+        pendingTransitionTo: "build",
+        pendingTransitionBody: "spec summary",
+        status: "specify",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const mockApi = {
+        api: {
+          sessions: {
+            ":id": {
+              chat: {
+                $get: vi.fn(() => okRes({ turns: [] })),
+              },
+            },
+          },
+        },
+      };
+      const actions = createActions(mockApi as never, makeMockWs(), deps);
+      const session = deps.sessionRegistry.get("s-rehydrate");
+
+      await actions.loadChat("s-rehydrate");
+
+      expect(session.store.pendingTransition).toMatchObject({
+        to: "build",
+        body: "spec summary",
+      });
+    });
+
+    it("clears pendingTransition when server meta has none (auto edge consumed)", async () => {
+      const deps = makeDeps();
+      deps.serverStore.actions.addSession({
+        id: "s-consumed",
+        projectId: "p1",
+        title: null,
+        modelId: null,
+        profileId: null,
+        thinkingLevel: "off",
+        kind: "mission",
+        parentSessionId: null,
+        changeName: null,
+        worktreePath: null,
+        pendingTransitionTo: null,
+        pendingTransitionBody: null,
+        status: "verify",
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const mockApi = {
+        api: {
+          sessions: {
+            ":id": {
+              chat: {
+                $get: vi.fn(() => okRes({ turns: [] })),
+              },
+            },
+          },
+        },
+      };
+      const actions = createActions(mockApi as never, makeMockWs(), deps);
+      const session = deps.sessionRegistry.get("s-consumed");
+      session.actions.setPendingTransition({ to: "verify", body: "stale" });
+
+      await actions.loadChat("s-consumed");
+
+      expect(session.store.pendingTransition).toBeNull();
+    });
+  });
 });
