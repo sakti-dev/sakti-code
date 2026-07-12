@@ -361,4 +361,96 @@ describe("WS client", () => {
 
     ws.disconnect();
   });
+
+  it("error frame clears retry state (stale strip fix)", () => {
+    const deps = makeDeps();
+    const { api, fake } = makeMockApi();
+    const ws = createWsClient(api, deps);
+
+    fake.fireOpen();
+    const session = deps.sessionRegistry.get("s1");
+
+    fake.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_start" },
+    });
+    session.actions.setRetry({
+      attempt: 1,
+      delayMs: 2000,
+      errorMessage: "429 rate limited",
+      maxAttempts: 3,
+    });
+    expect(session.store.retry).not.toBeNull();
+
+    fake.fireMessage({ type: "error", sessionId: "s1", error: "boom" });
+
+    expect(session.store.retry).toBeNull();
+    ws.disconnect();
+  });
+
+  it("error frame clears isStreaming signal", () => {
+    const deps = makeDeps();
+    const { api, fake } = makeMockApi();
+    const ws = createWsClient(api, deps);
+
+    fake.fireOpen();
+    fake.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_start" },
+    });
+    expect(isStreaming()).toBe(true);
+
+    fake.fireMessage({ type: "error", sessionId: "s1", error: "boom" });
+
+    expect(isStreaming()).toBe(false);
+    ws.disconnect();
+  });
+
+  it("error frame clears currentToolName", () => {
+    const deps = makeDeps();
+    const { api, fake } = makeMockApi();
+    const ws = createWsClient(api, deps);
+
+    fake.fireOpen();
+    const session = deps.sessionRegistry.get("s1");
+
+    fake.fireMessage({
+      type: "event",
+      sessionId: "s1",
+      event: { type: "agent_start" },
+    });
+    session.actions.setCurrentTool("bash");
+    expect(session.store.streaming.currentToolName).toBe("bash");
+
+    fake.fireMessage({ type: "error", sessionId: "s1", error: "boom" });
+
+    expect(session.store.streaming.currentToolName).toBeNull();
+    ws.disconnect();
+  });
+
+  it("error frame clears currentMessageId", () => {
+    const deps = makeDeps();
+    const { api, fake } = makeMockApi();
+    const ws = createWsClient(api, deps);
+
+    fake.fireOpen();
+    const session = deps.sessionRegistry.get("s1");
+    session.actions.startTurn(null);
+    session.actions.addAssistantMessage({
+      content: "",
+      id: "m1",
+      isStreaming: true,
+      parts: [],
+      role: "assistant",
+      timestamp: Date.now(),
+    });
+    expect(session.store.streaming.currentMessageId).toBe("m1");
+
+    fake.fireMessage({ type: "error", sessionId: "s1", error: "boom" });
+
+    expect(session.store.streaming.currentMessageId).toBeNull();
+    ws.disconnect();
+  });
 });

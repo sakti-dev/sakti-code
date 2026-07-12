@@ -109,6 +109,10 @@ export function createWsClient(api: WsConnectable, deps: WsClientDeps): WsClient
           session.actions.setError(msgId, data.error);
         }
         session.actions.finalizeTurn(Date.now());
+        session.actions.clearCurrentMessage();
+        session.actions.clearCurrentTool();
+        session.actions.setRetry(null);
+        setIsStreaming(false);
         break;
       }
 
