@@ -561,6 +561,36 @@ describe("ObservationalMemoryEngine (sync)", () => {
     expect(latest.observedEntryIds).toContain(id3);
     expect(latest.observedEntryIds).toContain(id4);
   });
+
+  it("pruneObservedMessages does not append a redundant entry on a no-op turn", async () => {
+    // Regression: pruneObservedMessages runs unconditionally at the end of
+    // every maybeObserve (including no-op turns where nothing was observed).
+    // Without an idempotency guard, each no-op appended a new
+    // ObservationPruneEntry with the same cumulative skip-set — bloating the
+    // tree (one real session accumulated 21 prune entries from a SINGLE
+    // observation). The context builder only uses the LATEST entry, so the
+    // extras are dead weight.
+    const engine = new ObservationalMemoryEngine({ deps: createDeps(storage, session) });
+    const base = Date.now();
+
+    session.appendChild({ role: "user", content: "x".repeat(800), timestamp: base + 1 }, base + 1);
+    setComplete("<observations>\n* obs1\n</observations>");
+    const record = await engine.getOrCreateRecord();
+    await engine.maybeObserve(record);
+
+    // After the observe: exactly one prune entry.
+    let pruneEntries = await Effect.runPromise(session.findEntries("observation_prune"));
+    expect(pruneEntries).toHaveLength(1);
+
+    // Simulate no-op turns: pruneObservedMessages runs again with the SAME
+    // record (no new observation, no new messages). It must NOT append more
+    // entries — the latest prune already covers every observed message.
+    await engine.pruneObservedMessages(record);
+    await engine.pruneObservedMessages(record);
+
+    pruneEntries = await Effect.runPromise(session.findEntries("observation_prune"));
+    expect(pruneEntries).toHaveLength(1);
+  });
 });
 
 describe("ObservationalMemoryEngine — pruneHistory after reflection", () => {

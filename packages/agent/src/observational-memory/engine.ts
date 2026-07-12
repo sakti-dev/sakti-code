@@ -715,6 +715,16 @@ export class ObservationalMemoryEngine {
    *
    * Mirrors Mastra's `buildContextSystemMessages` (plural). See
    * `openspec/references/mastra/packages/memory/src/processors/observational-memory/observational-memory.ts:2502`.
+   *
+   * Scope divergence (intentional): for `scope: "thread"`, observation TEXT
+   * lives in session-tree `ObservationEntry` rows (rendered as in-stream
+   * `<observation>` user messages by `buildSessionContextFromEntries`) and
+   * `record.activeObservations` is left `""` — so this method returns
+   * `undefined` for thread scope. It only produces output for `scope:
+   * "resource"` (the project-level record consumed by the read-only channel
+   * via `buildObservationsBlock`). Keeping observations out of the system
+   * prompt for thread scope preserves the cache prefix; this is a deliberate
+   * divergence from Mastra, which stores both scopes in `activeObservations`.
    */
   buildContextSystemMessages(record: ObservationalMemoryRecord): string[] | undefined {
     return formatObservationsForContext(record.activeObservations);
@@ -758,17 +768,31 @@ export class ObservationalMemoryEngine {
 
       if (toRemove.length === 0) return;
 
-      // Merge with the prior prune entry so the context builder (which uses
-      // "latest prune entry wins") keeps skipping previously-pruned messages
-      // and observation entries. Without this, old observed messages and
-      // pruned ObservationEntry rows would reappear after each observe cycle.
-      const cumulative = new Set<string>(toRemove);
+      // Find the latest existing prune entry so we (a) merge its IDs
+      // cumulatively and (b) skip appending a redundant entry when nothing
+      // new has been observed since. The context builder uses "latest prune
+      // entry wins", so duplicate entries only bloat the tree (one real
+      // session accumulated 21 prune entries from a single observation
+      // because pruneObservedMessages ran every turn).
+      let latestPruneIds: Set<string> | undefined;
       for (let i = pathEntries.length - 1; i >= 0; i--) {
         const e = pathEntries[i]!;
         if (e.type === "observation_prune") {
-          for (const id of e.observedEntryIds) cumulative.add(id);
+          latestPruneIds = new Set(e.observedEntryIds);
           break;
         }
+      }
+
+      // Idempotency guard: if the latest prune entry already covers every
+      // candidate, this is a no-op turn (no new observation/activation) —
+      // don't append a redundant entry.
+      if (latestPruneIds !== undefined && toRemove.every((id) => latestPruneIds.has(id))) {
+        return;
+      }
+
+      const cumulative = new Set<string>(toRemove);
+      if (latestPruneIds !== undefined) {
+        for (const id of latestPruneIds) cumulative.add(id);
       }
 
       const id = await Effect.runPromise(this.sessionStorage.createEntryId());

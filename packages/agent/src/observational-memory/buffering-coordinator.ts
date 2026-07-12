@@ -69,12 +69,14 @@ export function resolveRetentionFloor(
  * sakti constructs one engine per run, but we keep the same static-map shape
  * so tests and future multi-engine scenarios behave consistently.
  *
- * NOTE on "buffered" semantics: in this port, buffering is **incremental
- * chunking within the awaited turn**, not background execution — the engine
- * awaits `maybeBufferObservation`/`maybeBufferReflection` inline from the
- * turn hook. The `asyncBufferingOps` Promise tracking here is a faithful
- * Mastra port retained for a future background-detach; with serial
- * execution the in-flight guard is effectively always empty at check time.
+ * NOTE on "buffered" semantics: buffering is **background execution** —
+ * when a buffer interval is crossed below the observation threshold, the
+ * engine `detach()`es the observer/reflector LLM call (engine.ts ~190/246)
+ * as fire-and-forget and returns the record immediately so the turn hook
+ * doesn't block. The `asyncBufferingOps` map tracks those in-flight ops so
+ * (a) a second buffer trigger doesn't pile on, and (b) `waitForBuffering`
+ * at run end (agent-run.ts ~222) can drain them before teardown. This
+ * mirrors Mastra's `void om.buffer(...)` fire-and-forget design.
  * Renaming the storage API (`setBufferingObservationFlag`, etc.) is out of
  * scope because it would churn the DB adapter.
  */
