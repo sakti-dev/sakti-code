@@ -6,15 +6,10 @@ export function registerToolHandlers(): void {
     if (msgId) {
       ctx.actions.addToolCall(msgId, event.toolCallId, event.toolName, event.args);
     }
-    if (event.toolName === "transition") {
-      const args = event.args as { to?: unknown; body?: unknown };
-      if (typeof args.to === "string" && typeof args.body === "string") {
-        // A transition tool-call surfaces a confirmation card (for gate edges)
-        // or auto-chains (for auto edges, handled server-side). The card
-        // carries the destination phase + body.
-        ctx.actions.setPendingTransition({ to: args.to, body: args.body });
-      }
-    }
+    // NOTE: The transition confirmation card is NOT set here. The server
+    // resolves gate-vs-auto after the run ends and emits a
+    // transition_resolved WS frame. Only gate edges show a card — handled
+    // in ws-client.ts's handleFrame switch.
   });
 
   registerHandler("tool_execution_end", (event, ctx) => {

@@ -69,7 +69,7 @@ describe("tool handlers", () => {
     expect(part).toMatchObject({ type: "tool_call", status: "error" });
   });
 
-  it("transition tool sets pendingTransition (to + body)", () => {
+  it("transition tool_execution_start does NOT set pendingTransition (card comes from transition_resolved frame)", () => {
     const { session, dispatch } = setupHandlers();
     dispatch({ message: userMsg("hi"), type: "message_start" });
     dispatch({ message: assistantMsg(), type: "message_start" });
@@ -79,10 +79,9 @@ describe("tool handlers", () => {
       toolName: "transition",
       type: "tool_execution_start",
     });
-    expect(session.store.pendingTransition).toMatchObject({
-      to: "build",
-      body: "spec summary",
-    });
+    // The card is NO LONGER set from the tool-call event.
+    // It arrives via the transition_resolved WS frame (handled in ws-client).
+    expect(session.store.pendingTransition).toBeNull();
   });
 
   it("transition tool without a `to` does not set pendingTransition", () => {
