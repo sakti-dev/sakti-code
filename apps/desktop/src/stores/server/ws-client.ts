@@ -149,11 +149,9 @@ export function createWsClient(api: WsConnectable, deps: WsClientDeps): WsClient
         } else {
           session.actions.clearPendingTransition();
         }
-        if (data.status) {
-          server.actions.updateSession(data.sessionId, {
-            status: data.status as ServerStoreData["sessions"][string]["status"],
-          });
-        }
+        server.actions.updateSession(data.sessionId, {
+          status: data.status as ServerStoreData["sessions"][string]["status"],
+        });
         break;
       }
     }
