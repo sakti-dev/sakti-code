@@ -211,6 +211,21 @@ export const wsResponseSchema = Type.Union([
     status: Type.String(),
     body: Type.Optional(Type.String()),
   }),
+  Type.Object({
+    type: Type.Literal("permission.asked"),
+    sessionId: Type.String(),
+    id: Type.String(),
+    permission: Type.String(),
+    patterns: Type.Array(Type.String()),
+    toolName: Type.String(),
+    toolCallId: Type.String(),
+  }),
+  Type.Object({
+    type: Type.Literal("permission.replied"),
+    sessionId: Type.String(),
+    id: Type.String(),
+    reply: Type.Union([Type.Literal("once"), Type.Literal("always"), Type.Literal("reject")]),
+  }),
 ]);
 
 interface TransitionToolArgs {

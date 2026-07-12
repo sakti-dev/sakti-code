@@ -96,4 +96,25 @@ describe("WS frame types", () => {
     expect(checker.Check(gateFrame)).toBe(true);
     expect(checker.Check(autoFrame)).toBe(true);
   });
+
+  it("wsResponseSchema validates permission.asked and permission.replied frames", () => {
+    const checker = Compile(wsResponseSchema);
+    const asked = {
+      type: "permission.asked",
+      sessionId: "s1",
+      id: "per_1",
+      permission: "read",
+      patterns: ["a.env"],
+      toolName: "read",
+      toolCallId: "c1",
+    };
+    const replied = {
+      type: "permission.replied",
+      sessionId: "s1",
+      id: "per_1",
+      reply: "always",
+    };
+    expect(checker.Check(asked)).toBe(true);
+    expect(checker.Check(replied)).toBe(true);
+  });
 });
