@@ -253,7 +253,6 @@ export const generateBranchSummaryEffect = (
         apiKey,
         ...(headers === undefined ? {} : { headers }),
         ...(signal ? { abortSignal: signal } : {}),
-        maxOutputTokens: Math.min(model.maxTokens, 4096),
       }),
     );
     if (response.finishReason === "error") {
