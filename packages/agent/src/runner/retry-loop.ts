@@ -148,12 +148,21 @@ export interface RetryRunnerDepsEffect {
  *
  * Effect-native: consumes {@link RetryRunnerDepsEffect} (Effect-typed callbacks).
  * Run via `Effect.runPromise` at the edge, or composed inside another Effect.
+ *
+ * **Finalizer guarantee:** If the Effect fails mid-retry (e.g. `runTurn` or
+ * `rollbackLeaf` throws), the finalizer emits a catch-all `auto_retry_end` so
+ * the UI's retry banner never gets stuck visible. The finalizer is a no-op
+ * when the loop exits normally (it already emitted its own `auto_retry_end`).
  */
 export const executeWithRetryEffect = (
   deps: RetryRunnerDepsEffect,
   settings: RetrySettings,
-): Effect.Effect<void, Error> =>
-  Effect.gen(function* () {
+): Effect.Effect<void, Error> => {
+  let retryActive = false;
+  let lastErrorMessage: string | undefined;
+  let lastAttempt = 0;
+
+  return Effect.gen(function* () {
     deps.logger?.debug("turn attempt", {
       attempt: 0,
       maxRetries: settings.maxRetries,
@@ -174,6 +183,7 @@ export const executeWithRetryEffect = (
       })
     ) {
       attempt++;
+      lastAttempt = attempt;
       const delayMs = computeRetryDelay(attempt, settings.baseDelayMs);
 
       deps.logger?.error(
@@ -194,6 +204,8 @@ export const executeWithRetryEffect = (
         errorMessage: message.errorMessage ?? "Unknown error",
         maxAttempts: settings.maxRetries,
       });
+      retryActive = true;
+      lastErrorMessage = message.errorMessage;
 
       deps.logger?.warn("rolling back leaf", { attempt });
       yield* deps.rollbackLeaf();
@@ -208,6 +220,7 @@ export const executeWithRetryEffect = (
           attempt,
           ...(message.errorMessage === undefined ? {} : { finalError: message.errorMessage }),
         });
+        retryActive = false;
         return;
       }
 
@@ -216,6 +229,7 @@ export const executeWithRetryEffect = (
         maxRetries: settings.maxRetries,
       });
       message = yield* deps.runTurn();
+      lastErrorMessage = message.errorMessage;
     }
 
     if (attempt > 0) {
@@ -234,5 +248,20 @@ export const executeWithRetryEffect = (
         attempt,
         ...(success ? {} : { finalError: message.errorMessage ?? "Unknown error" }),
       });
+      retryActive = false;
     }
-  });
+  }).pipe(
+    Effect.ensuring(
+      Effect.sync(() => {
+        if (retryActive) {
+          deps.emit({
+            type: "auto_retry_end",
+            success: false,
+            attempt: lastAttempt,
+            ...(lastErrorMessage === undefined ? {} : { finalError: lastErrorMessage }),
+          });
+        }
+      }),
+    ),
+  );
+};

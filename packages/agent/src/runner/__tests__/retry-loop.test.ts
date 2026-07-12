@@ -431,4 +431,85 @@ describe("executeWithRetryEffect", () => {
     expect(result).toBe("done");
     expect(fake.emitCalls).toEqual([]);
   });
+
+  it("emits auto_retry_end when runTurn fails with an Effect error mid-retry", async () => {
+    const emitCalls: AgentEvent[] = [];
+    let turnIndex = 0;
+    const firstTurn = assistantMessage({
+      stopReason: "error",
+      errorMessage: "429 rate limited",
+    });
+    const deps: RetryRunnerDepsEffect = {
+      signal: new AbortController().signal,
+      emit: (event) => emitCalls.push(event),
+      rollbackLeaf: () => Effect.void,
+      runTurn: () =>
+        Effect.gen(function* () {
+          turnIndex++;
+          if (turnIndex === 1) {
+            return firstTurn;
+          }
+          return yield* Effect.fail(new Error("DB write failed during retry"));
+        }),
+    };
+
+    const result = await Effect.runPromise(
+      executeWithRetryEffect(deps, enabledSettings).pipe(Effect.exit),
+    );
+
+    expect(result._tag).toBe("Failure");
+
+    const types = emitCalls.map((e) => e.type);
+    expect(types).toContain("auto_retry_start");
+    expect(types).toContain("auto_retry_end");
+
+    const end = emitCalls.at(-1)!;
+    expect(end).toMatchObject({
+      type: "auto_retry_end",
+      success: false,
+      attempt: 1,
+    });
+  });
+
+  it("does NOT emit auto_retry_end on success path (no double emit)", async () => {
+    const fake = makeFakeDeps({
+      signal: new AbortController().signal,
+      turns: [
+        assistantMessage({
+          stopReason: "error",
+          errorMessage: "429 rate limited",
+        }),
+        assistantMessage({ text: "ok", stopReason: "stop" }),
+      ],
+    });
+    await runRetry(fake.deps, enabledSettings);
+
+    const ends = fake.emitCalls.filter((e) => e.type === "auto_retry_end");
+    expect(ends).toHaveLength(1);
+  });
+
+  it("emits auto_retry_end when rollbackLeaf fails mid-retry", async () => {
+    const emitCalls: AgentEvent[] = [];
+    const failingMessage = assistantMessage({
+      stopReason: "error",
+      errorMessage: "429 rate limited",
+    });
+    const deps: RetryRunnerDepsEffect = {
+      signal: new AbortController().signal,
+      emit: (event) => emitCalls.push(event),
+      rollbackLeaf: () => Effect.fail(new Error("storage corrupted")),
+      runTurn: () => Effect.sync(() => failingMessage),
+    };
+
+    const result = await Effect.runPromise(
+      executeWithRetryEffect(deps, enabledSettings).pipe(Effect.exit),
+    );
+    expect(result._tag).toBe("Failure");
+
+    const types = emitCalls.map((e) => e.type);
+    expect(types).toContain("auto_retry_start");
+    expect(types).toContain("auto_retry_end");
+    const end = emitCalls.at(-1)!;
+    expect(end).toMatchObject({ type: "auto_retry_end", success: false });
+  });
 });
