@@ -3,6 +3,7 @@ import { registerHandler } from "../event-handler.ts";
 export function registerLifecycleHandlers(): void {
   registerHandler("agent_start", (_event, ctx) => {
     ctx.actions.setPhase("thinking");
+    ctx.actions.clearPendingTransition();
   });
 
   registerHandler("turn_start", (_event, ctx) => {

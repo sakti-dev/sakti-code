@@ -8,6 +8,16 @@ describe("lifecycle handlers", () => {
     expect(session.store.streaming.phase).toBe("thinking");
   });
 
+  it("agent_start clears stale pendingTransition (defense-in-depth)", () => {
+    const { session, dispatch } = setupHandlers();
+    session.actions.setPendingTransition({ to: "verify", body: "stale" });
+    expect(session.store.pendingTransition).not.toBeNull();
+
+    dispatch({ type: "agent_start" });
+
+    expect(session.store.pendingTransition).toBeNull();
+  });
+
   it("turn_start sets phase to thinking", () => {
     const { session, dispatch } = setupHandlers();
     dispatch({ type: "turn_start" });
