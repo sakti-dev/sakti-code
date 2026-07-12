@@ -64,6 +64,42 @@ describe("ChipInput", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it("calls onAbort on Escape when no menu is active", () => {
+    const onAbort = vi.fn();
+    render(() => <ChipInput onChange={() => {}} onAbort={onAbort} />);
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
+    expect(onAbort).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT call onAbort on Escape when a token menu IS active", () => {
+    const onAbort = vi.fn();
+    const onMenuKeyDown = vi.fn();
+    render(() => (
+      <ChipInput
+        onChange={() => {}}
+        onAbort={onAbort}
+        onQuery={vi.fn()}
+        onMenuKeyDown={onMenuKeyDown}
+      />
+    ));
+    const ed = screen.getByRole("textbox") as HTMLElement;
+    caretAtStart(ed);
+    fireEvent.keyDown(ed, { key: "@" });
+    onAbort.mockClear();
+    fireEvent.keyDown(ed, { key: "Escape" });
+    expect(onMenuKeyDown).toHaveBeenCalledTimes(1);
+    expect(onAbort).not.toHaveBeenCalled();
+  });
+
+  it("calls onSubmit on Enter even when onAbort is wired", () => {
+    const onSubmit = vi.fn();
+    const onAbort = vi.fn();
+    render(() => <ChipInput onChange={() => {}} onSubmit={onSubmit} onAbort={onAbort} />);
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onAbort).not.toHaveBeenCalled();
+  });
+
   it("shows the placeholder only when empty", () => {
     render(() => <ChipInput onChange={() => {}} placeholder="Send a message…" />);
     expect(screen.queryByText("Send a message…")).not.toBeNull();

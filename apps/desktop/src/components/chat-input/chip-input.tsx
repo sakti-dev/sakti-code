@@ -18,6 +18,8 @@ export interface ChipInputProps {
   disabled?: boolean;
   onChange: (value: string) => void;
   onSubmit?: () => void;
+  /** Called when Escape is pressed with no active token menu. */
+  onAbort?: () => void;
   onTrigger?: (t: ChipTrigger) => void;
   /** Live query text after a trigger char; null closes the active token. */
   onQuery?: (query: string | null) => void;
@@ -215,6 +217,11 @@ export function ChipInput(props: ChipInputProps): JSX.Element {
       if (e.key === "Escape") {
         endToken();
       }
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      props.onAbort?.();
       return;
     }
     if (!tokenAnchor && editorRef && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
