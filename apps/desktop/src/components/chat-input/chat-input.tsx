@@ -266,6 +266,12 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
     void refetchHistory();
   };
 
+  const abort = () => {
+    if (props.sessionId) {
+      actions.abortRun(props.sessionId);
+    }
+  };
+
   return (
     <div class="w-full px-4 pb-4">
       <div class="mx-auto flex max-w-3xl flex-col">
@@ -328,6 +334,7 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
             onChange={setValue}
             onHistoryNavigate={onHistoryNavigate}
             onSubmit={send}
+            onAbort={abort}
             onTrigger={onTrigger}
             onQuery={onQuery}
             onMenuKeyDown={(e) => nav.handleKeyDown(e)}
@@ -337,7 +344,12 @@ export function ChatInput(props: ChatInputProps): JSX.Element {
 
           <div class="flex items-center justify-end gap-2">
             <ProfileSelect sessionId={props.sessionId} />
-            <SendButton canSend={canSend} isSending={isGenerating()} onClick={send} />
+            <SendButton
+              canSend={canSend}
+              isSending={isGenerating()}
+              onSend={send}
+              onAbort={abort}
+            />
           </div>
 
           <InputFooter charCount={() => value().length} stats={sessionStats} />
