@@ -13,6 +13,7 @@
  * OM failures are best-effort: logged and swallowed so they never abort a run.
  */
 
+import { performance } from "node:perf_hooks";
 import { Effect } from "effect";
 import type { AgentMessage, OmAgentEvent } from "../types.ts";
 import { buildSessionContextFromEntries } from "../session/session.ts";
@@ -136,8 +137,11 @@ export class ObservationalMemoryEngine {
   private async loadUnobservedMessageEntries(
     record: ObservationalMemoryRecord,
   ): Promise<MessageEntry[]> {
+    const __t0 = performance.now();
     const leafId = await Effect.runPromise(this.sessionStorage.getLeafId());
+    const __t1 = performance.now();
     const pathEntries = await Effect.runPromise(this.sessionStorage.getPathToRoot(leafId));
+    const __t2 = performance.now();
     const messageEntries = pathEntries.filter(
       (entry): entry is MessageEntry => entry.type === "message",
     );
@@ -151,7 +155,20 @@ export class ObservationalMemoryEngine {
         return ts !== undefined && ts > lastObservedAt;
       });
     }
-    return filterSkillContentEntries(sinceLastObserve, this.deps.skillFilterRoot);
+    const __t3 = performance.now();
+    const result = filterSkillContentEntries(sinceLastObserve, this.deps.skillFilterRoot);
+    const __t4 = performance.now();
+    this.logger?.debug("maybeObserve timing", {
+      step: "loadUnobservedMessageEntries",
+      getLeafId: Math.round(__t1 - __t0),
+      getPathToRoot: Math.round(__t2 - __t1),
+      filter: Math.round(__t3 - __t2),
+      filterSkillContent: Math.round(__t4 - __t3),
+      totalEntries: pathEntries.length,
+      messageEntries: messageEntries.length,
+      afterSkillFilter: result.length,
+    });
+    return result;
   }
 
   /**
@@ -160,12 +177,32 @@ export class ObservationalMemoryEngine {
    * Returns the updated record (or the original if no observe happened).
    */
   async maybeObserve(record: ObservationalMemoryRecord): Promise<ObservationalMemoryRecord> {
+    const __t0 = performance.now();
     const entries = await this.loadUnobservedMessageEntries(record);
-    if (entries.length === 0) return record;
+    const __t1 = performance.now();
+    if (entries.length === 0) {
+      this.logger?.debug("maybeObserve timing", {
+        step: "loadUnobserved (empty)",
+        ms: Math.round(__t1 - __t0),
+      });
+      return record;
+    }
 
+    const __t2 = performance.now();
     const unobserved = buildSessionContextFromEntries(entries).messages;
+    const __t3 = performance.now();
     const pendingTokens = this.tokenCounter.countMessages(unobserved);
+    const __t4 = performance.now();
     const threshold = this.deps.thresholds.observation;
+    this.logger?.debug("maybeObserve timing", {
+      step: "breakdown",
+      loadUnobserved: Math.round(__t1 - __t0),
+      buildContext: Math.round(__t3 - __t2),
+      countTokens: Math.round(__t4 - __t3),
+      entries: entries.length,
+      pendingTokens,
+      threshold,
+    });
 
     let result: ObservationalMemoryRecord;
     try {
@@ -220,7 +257,12 @@ export class ObservationalMemoryEngine {
       result = record;
     }
 
+    const __tPrune = performance.now();
     await this.pruneObservedMessages(result);
+    this.logger?.debug("maybeObserve timing", {
+      step: "pruneObservedMessages",
+      ms: Math.round(performance.now() - __tPrune),
+    });
     this.emitOmStatus(result);
     return result;
   }
@@ -771,11 +813,21 @@ export class ObservationalMemoryEngine {
         this.deps.thresholds.observation,
       );
 
+      const __tCleanup = performance.now();
       const toRemove = getObservedEntryIdsForCleanup({
         entries: messageEntries,
         observedEntryIds: observedIds,
         retentionFloor: floor,
         tokenCounter: this.tokenCounter,
+      });
+      this.logger?.debug("pruneObservedMessages timing", {
+        step: "getObservedEntryIdsForCleanup",
+        ms: Math.round(performance.now() - __tCleanup),
+        totalMessageEntries: messageEntries.length,
+        observedIds: observedIds.length,
+        presentObserved: presentObserved.length,
+        toRemove: toRemove.length,
+        floor,
       });
 
       if (toRemove.length === 0) return;

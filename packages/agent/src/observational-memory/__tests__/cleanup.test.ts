@@ -19,11 +19,13 @@ function makeEntry(id: string, content: string): MessageEntry {
 
 /** Simple token counter: 1 token per character. */
 const charCounter = {
+  countMessage(message: AgentMessage): number {
+    const content =
+      "content" in message && typeof message.content === "string" ? message.content : "";
+    return content.length;
+  },
   countMessages(messages: AgentMessage[]): number {
-    return messages.reduce((sum, m) => {
-      const content = "content" in m && typeof m.content === "string" ? m.content : "";
-      return sum + content.length;
-    }, 0);
+    return messages.reduce((sum, m) => sum + charCounter.countMessage(m), 0);
   },
 };
 

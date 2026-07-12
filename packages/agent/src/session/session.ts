@@ -58,7 +58,7 @@ export function buildSessionContextFromEntries(pathEntries: SessionTreeEntry[]):
   }
 
   const messages: AgentMessage[] = [];
-  const appendMessage = (entry: SessionTreeEntry) => {
+  const appendMessageEntry = (entry: SessionTreeEntry) => {
     if (observedEntryIds?.has(entry.id)) return;
     if (entry.type === "message") {
       messages.push(entry.message as AgentMessage);
@@ -81,9 +81,60 @@ export function buildSessionContextFromEntries(pathEntries: SessionTreeEntry[]):
     }
   };
 
+  // Defer observation/reflection (and other non-tool-result) entries that
+  // would land between an assistant message with tool calls and its pending
+  // tool results. The Anthropic API requires tool results to immediately
+  // follow the assistant turn — a user-role observation inserted between
+  // them causes a "Tool results are missing" API error.
+  //
+  // This can happen when OM appends an observation entry at the tree leaf
+  // while tools are still executing (the leaf is momentarily the assistant
+  // message before tool results arrive).
+  let unansweredToolCalls = 0;
+  const deferred: SessionTreeEntry[] = [];
+
   for (const entry of pathEntries) {
-    appendMessage(entry);
+    if (observedEntryIds?.has(entry.id)) continue;
+
+    // Determine the role this entry would produce.
+    const isAssistant = entry.type === "message" && entry.message?.role === "assistant";
+    const isToolResult = entry.type === "message" && entry.message?.role === "toolResult";
+    const isObsOrReflection = entry.type === "observation" || entry.type === "reflection";
+
+    if (isAssistant) {
+      // Flush any deferred entries before a new assistant turn starts —
+      // they're safe now (the previous turn's tool calls are resolved).
+      for (const d of deferred) appendMessageEntry(d);
+      deferred.length = 0;
+      appendMessageEntry(entry);
+      const msg = entry.type === "message" ? entry.message : null;
+      const content = msg && "content" in msg ? msg.content : undefined;
+      unansweredToolCalls = Array.isArray(content)
+        ? content.filter((c) => c.type === "toolCall").length
+        : 0;
+    } else if (isToolResult) {
+      appendMessageEntry(entry);
+      unansweredToolCalls = Math.max(0, unansweredToolCalls - 1);
+      if (unansweredToolCalls === 0 && deferred.length > 0) {
+        for (const d of deferred) appendMessageEntry(d);
+        deferred.length = 0;
+      }
+    } else if (isObsOrReflection && unansweredToolCalls > 0) {
+      // Would break tool call → result pairing — defer until tool results arrive.
+      deferred.push(entry);
+    } else {
+      // User messages, custom messages, branch summaries, etc. — safe to
+      // emit only when there are no pending tool calls.
+      if (unansweredToolCalls > 0) {
+        deferred.push(entry);
+      } else {
+        appendMessageEntry(entry);
+      }
+    }
   }
+
+  // Flush any remaining deferred entries.
+  for (const d of deferred) appendMessageEntry(d);
 
   return { messages, thinkingLevel, model, activeToolNames };
 }

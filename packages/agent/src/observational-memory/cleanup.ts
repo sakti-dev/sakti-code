@@ -4,6 +4,7 @@ import type { AgentMessage } from "../types.ts";
 /** Minimal token counter interface (decoupled from full OM deps). */
 export interface TokenCounterLike {
   countMessages(messages: AgentMessage[]): number;
+  countMessage(message: AgentMessage): number;
 }
 
 /**
@@ -63,35 +64,39 @@ export function getObservedEntryIdsForCleanup(params: {
     return candidates.map((e) => e.id);
   }
 
+  // Pre-compute per-message token counts once: O(n).
+  // All subsequent floor checks use arithmetic instead of re-tokenizing,
+  // avoiding the O(candidates × n) blowup that plagued the original.
+  const tokensById = new Map<string, number>();
+  for (const entry of entries) {
+    tokensById.set(entry.id, tokenCounter.countMessage(entry.message));
+  }
+
+  // Start from the full token count (includes conversation-level overhead).
+  // countMessages = TOKENS_PER_CONVERSATION + Σ countMessage, so subtracting
+  // individual countMessage values preserves the exact remaining estimate.
+  let remainingTokens = tokenCounter.countMessages(entries.map((e) => e.message));
+
   const idsToRemove = new Set<string>();
   const removalOrder: string[] = [];
 
-  const countRemaining = (): number =>
-    tokenCounter.countMessages(entries.filter((e) => !idsToRemove.has(e.id)).map((e) => e.message));
-
   // Pass 1: queue observed entries for removal, per-message floor check.
   for (const entry of candidates) {
-    // Simulate removal: check if remaining would be at or above floor.
-    idsToRemove.add(entry.id);
-    const remaining = countRemaining();
-    if (remaining < retentionFloor) {
+    remainingTokens -= tokensById.get(entry.id)!;
+    if (remainingTokens < retentionFloor) {
       // Removing this entry drops below floor — undo and stop.
-      idsToRemove.delete(entry.id);
+      remainingTokens += tokensById.get(entry.id)!;
       break;
     }
+    idsToRemove.add(entry.id);
     removalOrder.push(entry.id);
   }
 
   // Pass 2: LIFO restore if aggregate total is still below floor.
-  // (Handles edge cases where per-message check allowed removals but
-  // the aggregate is still too low due to token estimation drift.)
-  if (idsToRemove.size > 0) {
-    let remainingTokens = countRemaining();
-    while (remainingTokens < retentionFloor && removalOrder.length > 0) {
-      const restoreId = removalOrder.pop()!;
-      idsToRemove.delete(restoreId);
-      remainingTokens = countRemaining();
-    }
+  while (remainingTokens < retentionFloor && removalOrder.length > 0) {
+    const restoreId = removalOrder.pop()!;
+    idsToRemove.delete(restoreId);
+    remainingTokens += tokensById.get(restoreId)!;
   }
 
   return [...idsToRemove];

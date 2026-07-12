@@ -3,6 +3,8 @@
  * Transforms to Message[] only at the LLM call boundary.
  */
 
+import { performance } from "node:perf_hooks";
+
 import type {
   AssistantMessage,
   TextContent,
@@ -412,15 +414,28 @@ const runLoopEffect = (
 
         yield* emitEffect(emit, { type: "turn_end", message, toolResults });
 
+        // ── Turn-boundary timing instrumentation ────────────────────
+        const __tbStart = performance.now();
+        const __tb = (label: string, since?: number): number => {
+          const now = performance.now();
+          config.logger?.debug("turn-boundary timing", {
+            step: label,
+            ms: Math.round(now - (since ?? __tbStart)),
+          });
+          return now;
+        };
+
         const nextTurnContext = {
           message,
           toolResults,
           context: currentContext,
           newMessages,
         };
+        const __prepStart = performance.now();
         const nextTurnSnapshot = yield* Effect.promise(() =>
           Promise.resolve(config.prepareNextTurn?.(nextTurnContext)),
         );
+        __tb("prepareNextTurn", __prepStart);
         if (nextTurnSnapshot) {
           currentContext = nextTurnSnapshot.context ?? currentContext;
           const reasoning =
@@ -441,22 +456,40 @@ const runLoopEffect = (
         // (rendered by the context builder into the message stream). The base
         // systemPrompt stays IMMUTABLE. Failures are best-effort and logged.
         if (config.observationalMemory) {
+          const __omStart = performance.now();
           yield* Effect.promise(async () => {
             try {
               const om = config.observationalMemory!;
+              const __s = performance.now();
               const record = await om.engine.getOrCreateRecord();
+              config.logger?.debug("turn-boundary timing", {
+                step: "om.getOrCreateRecord",
+                ms: Math.round(performance.now() - __s),
+              });
+              const __s2 = performance.now();
               const observedRecord = await om.engine.maybeObserve(record);
+              config.logger?.debug("turn-boundary timing", {
+                step: "om.maybeObserve",
+                ms: Math.round(performance.now() - __s2),
+              });
+              const __s3 = performance.now();
               await om.engine.maybeReflect(observedRecord);
+              config.logger?.debug("turn-boundary timing", {
+                step: "om.maybeReflect",
+                ms: Math.round(performance.now() - __s3),
+              });
             } catch (error: unknown) {
               config.logger?.error("observational memory turn hook failed", error, {
                 sessionId: config.sessionId,
               });
             }
           });
+          __tb("OM total", __omStart);
         }
         // §OM read-only: inject the project's resource-scope OM as a stream
         // message after the skill-pair. Ephemeral — re-injected each turn.
         if (config.observationalMemoryReadOnly) {
+          const __roStart = performance.now();
           const omReadOnlyBlocks = yield* Effect.promise(async () => {
             try {
               return await config.observationalMemoryReadOnly!.getObservationsBlocks();
@@ -464,6 +497,7 @@ const runLoopEffect = (
               return undefined;
             }
           });
+          __tb("OM readOnly", __roStart);
           if (omReadOnlyBlocks !== undefined && omReadOnlyBlocks.length > 0) {
             const insertAt = findObservationInsertionIndex(currentContext.messages);
             const obsMessages: AgentMessage[] = omReadOnlyBlocks.map((text) => ({
@@ -482,6 +516,7 @@ const runLoopEffect = (
           }
         }
 
+        const __stopStart = performance.now();
         const shouldStop = yield* Effect.promise(() =>
           Promise.resolve(
             config.shouldStopAfterTurn?.({
@@ -492,6 +527,7 @@ const runLoopEffect = (
             }),
           ),
         );
+        __tb("shouldStopAfterTurn", __stopStart);
         if (shouldStop) {
           config.logger?.info("turn finished", {
             stopReason: message.stopReason,
@@ -501,6 +537,7 @@ const runLoopEffect = (
           return;
         }
 
+        __tb("TOTAL turn boundary");
         config.logger?.debug("iteration complete", {
           messagesInContext: currentContext.messages.length,
           toolCallsInTurn: toolCalls.length,
