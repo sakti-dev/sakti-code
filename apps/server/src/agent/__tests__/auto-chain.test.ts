@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { makeContext } from "../../__tests__/helpers.ts";
 import { clearRunsForTesting } from "../runner.ts";
 import * as runnerMod from "../runner.ts";
+import * as transitionApplyMod from "../config/transition-apply.ts";
 import { runAgentStream } from "../ws-handler.ts";
 
 describe("runAgentStream auto-chain across auto-edges", () => {
@@ -388,6 +389,150 @@ describe("runAgentStream auto-chain across auto-edges", () => {
       expect(resolved).toBeUndefined();
     } finally {
       spy.mockRestore();
+    }
+  });
+
+  it("emits transition_resolved {mode:auto} on unknown-edge path", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("unknown-edge", "/tmp/unknown-edge");
+    const session = await ctx.repos.sessions.create(project.id, { status: "build" });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    spy.mockImplementation(async (ctx2: unknown, sid: string) => {
+      const c = ctx2 as {
+        repos: { sessions: { update: (id: string, d: object) => Promise<unknown> } };
+      };
+      await c.repos.sessions.update(sid, {
+        pendingTransitionTo: "bogus",
+        pendingTransitionBody: "bad edge",
+      });
+    });
+
+    const frames: unknown[] = [];
+    try {
+      await runAgentStream(ctx, session.id, "go", storage, {
+        send: (frame) => frames.push(frame),
+      });
+      const resolved = frames.find((f) => (f as { type?: string }).type === "transition_resolved");
+      expect(resolved).toBeDefined();
+      expect(resolved).toMatchObject({
+        type: "transition_resolved",
+        sessionId: session.id,
+        to: "bogus",
+        mode: "auto",
+        status: "build",
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("emits transition_resolved {mode:auto} on depth-cap path", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("depth-cap-frame", "/tmp/depth-cap-frame");
+    const session = await ctx.repos.sessions.create(project.id, { status: "build" });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    let calls = 0;
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    // Infinite ping-pong: build→verify→build→verify… until depth cap stops it.
+    spy.mockImplementation(async (ctx2: unknown, sid: string) => {
+      calls++;
+      const c = ctx2 as {
+        repos: {
+          sessions: {
+            update: (id: string, d: object) => Promise<unknown>;
+            findById: (id: string) => { status: string };
+          };
+        };
+      };
+      const currentStatus = c.repos.sessions.findById(sid).status;
+      if (currentStatus === "build") {
+        await c.repos.sessions.update(sid, {
+          pendingTransitionTo: "verify",
+          pendingTransitionBody: "done",
+        });
+      } else {
+        await c.repos.sessions.update(sid, {
+          pendingTransitionTo: "build",
+          pendingTransitionBody: "fix it",
+        });
+      }
+    });
+
+    const frames: unknown[] = [];
+    try {
+      await runAgentStream(ctx, session.id, "go", storage, {
+        send: (frame) => frames.push(frame),
+      });
+      const resolvedFrames = frames.filter(
+        (f) => (f as { type?: string }).type === "transition_resolved",
+      );
+      // Every runPrompt call transitions, so without the depth-cap frame
+      // there would be calls-1 transition_resolved frames. With the fix
+      // emitting one for the depth-cap path, the count equals calls.
+      expect(resolvedFrames.length).toBe(calls);
+      // The depth-cap frame must be the last transition_resolved emitted.
+      const last = resolvedFrames.at(-1);
+      expect(last).toMatchObject({
+        type: "transition_resolved",
+        mode: "auto",
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("emits transition_resolved {mode:auto} when applyTransition throws", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("apply-err", "/tmp/apply-err");
+    const session = await ctx.repos.sessions.create(project.id, { status: "build" });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    const runSpy = vi.spyOn(runnerMod, "runPrompt");
+    runSpy.mockImplementation(async (ctx2: unknown, sid: string) => {
+      const c = ctx2 as {
+        repos: { sessions: { update: (id: string, d: object) => Promise<unknown> } };
+      };
+      await c.repos.sessions.update(sid, {
+        pendingTransitionTo: "verify",
+        pendingTransitionBody: "done",
+      });
+    });
+
+    const applySpy = vi.spyOn(transitionApplyMod, "applyTransition");
+    applySpy.mockImplementation(async () => {
+      throw new Error("synthetic applyTransition failure");
+    });
+
+    const frames: unknown[] = [];
+    try {
+      await runAgentStream(ctx, session.id, "go", storage, {
+        send: (frame) => frames.push(frame),
+      });
+      const resolved = frames.find((f) => (f as { type?: string }).type === "transition_resolved");
+      expect(resolved).toBeDefined();
+      expect(resolved).toMatchObject({
+        type: "transition_resolved",
+        sessionId: session.id,
+        to: "verify",
+        mode: "auto",
+      });
+      // Status unchanged — applyTransition threw before flipping.
+      expect((resolved as { status: string }).status).toBe("build");
+    } finally {
+      runSpy.mockRestore();
+      applySpy.mockRestore();
     }
   });
 });

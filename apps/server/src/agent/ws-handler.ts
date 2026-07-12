@@ -429,8 +429,15 @@ export async function runAgentStream(
     const from = phaseFromSession(session);
     const destPhase = dest as Phase;
     if (!hasEdge(from, destPhase)) {
-      // Unknown edge — clear the stale pending and stop.
+      // Unknown edge — clear the stale pending, notify desktop, and stop.
       await clearPendingTransition(ctx, sessionId);
+      ws.send({
+        mode: "auto",
+        sessionId,
+        status: session.status,
+        to: dest,
+        type: "transition_resolved",
+      } satisfies TransitionResolvedFrame);
       return;
     }
     const edge = getEdge(from, destPhase);
@@ -451,6 +458,13 @@ export async function runAgentStream(
     if (depth++ >= MAX_CHAIN_DEPTH) {
       log?.warn?.("auto-chain depth cap reached — stopping", { sessionId, depth });
       await clearPendingTransition(ctx, sessionId);
+      ws.send({
+        mode: "auto",
+        sessionId,
+        status: session.status,
+        to: dest,
+        type: "transition_resolved",
+      } satisfies TransitionResolvedFrame);
       return;
     }
     const forceReset = edge.requiresForcedObserve ? buildForceReset(ctx, session) : undefined;
@@ -472,6 +486,14 @@ export async function runAgentStream(
     } catch (err) {
       log?.error?.("auto-chain: applyTransition failed — stopping", err, { sessionId });
       await clearPendingTransition(ctx, sessionId);
+      const afterErr = ctx.repos.sessions.findById(sessionId);
+      ws.send({
+        mode: "auto",
+        sessionId,
+        status: afterErr?.status ?? session.status,
+        to: dest,
+        type: "transition_resolved",
+      } satisfies TransitionResolvedFrame);
       return;
     }
     // Sync the desktop: status flipped, auto-chain applied, no card.
