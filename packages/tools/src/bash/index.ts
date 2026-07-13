@@ -137,7 +137,7 @@ export function createBashTool(
   return {
     name: "bash",
     label: "bash",
-    description: `Execute a bash command in the current working directory (shown in <env>). The shell starts there — do not \`cd\` into the working directory (you are already there); use \`cd\` only to enter a subdirectory. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.`,
+    description: `Execute a bash command in the current working directory (shown in <env>). The shell starts there — do not \`cd\` into the working directory (you are already there); use \`cd\` only to enter a subdirectory. Wrong: \`cd /home/user/project && pnpm install\`. Right: \`pnpm install\`. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.`,
     parameters: bashSchema,
     permissions: (params) => {
       const command = (params as BashToolInput).command ?? "";

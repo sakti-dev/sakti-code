@@ -56,11 +56,11 @@ Build phase isn't complete${progressNote}. Continue: pick the next unchecked tas
   }
   if (escalated) {
     return `<reminder phase="verify" escalated>
-You've stalled twice without completing verification. Explain the specific blocker, or finish checking and call transition({to:"build"}) with a fixing plan or transition({to:"archive"}) if clean.
+You've stalled twice without completing verification. Explain the specific blocker in your output. If you're blocked on the user, say so and stop. Otherwise, finish checking and call transition({to:"build"}) with a fixing plan, or transition({to:"archive"}) if clean.
 </reminder>`;
   }
   return `<reminder phase="verify">
-Verify phase isn't complete. Finish checking completeness, correctness, and coherence against design.md + specs + tasks.md. If you found issues, write the fixing plan and call transition({to:"build"}). Only call transition({to:"archive"}) if the work is genuinely clean.
+Verify phase hasn't transitioned yet. If you still need to check completeness, correctness, or coherence against design.md + specs + tasks.md, do that now. If you found issues, call transition({to:"build"}) with a fixing plan. If the work is clean, call transition({to:"archive"}). If you're waiting for user input, just say so and stop — no transition needed.
 </reminder>`;
 }
 
