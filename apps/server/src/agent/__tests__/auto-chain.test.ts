@@ -664,4 +664,39 @@ describe("runAgentStream auto-chain across auto-edges", () => {
       spy.mockRestore();
     }
   });
+
+  it("does NOT inject reminder when user aborts in build mode", async () => {
+    const { ctx, db } = await makeContext();
+    const project = await ctx.repos.projects.create("abort-build", "/tmp/abort-build");
+    const session = await ctx.repos.sessions.create(project.id, { status: "build" });
+    const storage = new SqliteSessionStorage(db, session.id, {
+      id: session.id,
+      createdAt: new Date().toISOString(),
+    });
+
+    let calls = 0;
+    const messages: string[] = [];
+    const spy = vi.spyOn(runnerMod, "runPrompt");
+    spy.mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async (...args: any[]) => {
+        calls++;
+        const msg = args[2] as string;
+        messages.push(msg);
+        // Simulate the harness emitting an abort event (user pressed Escape).
+        const eventCallback = args[4] as (e: { type: string }) => void;
+        eventCallback({ type: "abort" });
+        // No transition — the agent was interrupted.
+      },
+    );
+
+    try {
+      await runAgentStream(ctx, session.id, "start building", storage, { send: () => {} });
+      // Abort: exactly 1 run, NO reminder injected.
+      expect(calls).toBe(1);
+      expect(messages.some((m) => m.includes("<reminder"))).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });

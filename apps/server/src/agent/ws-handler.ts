@@ -347,6 +347,9 @@ export async function runAgentStream(
     if (storage instanceof SqliteSessionStorage) {
       storage.setCurrentTurnId(turn.id);
     }
+    // Track whether THIS iteration's run was aborted by the user. An abort
+    // is not a stall — the reminder must not fire on an aborted run.
+    let wasAborted = false;
     // A new run supersedes any pending transition: clear the persisted pending
     // state so a reload during this run doesn't resurface a stale card. If the
     // agent calls `transition` again this turn, the side-effect below re-sets
@@ -375,6 +378,9 @@ export async function runAgentStream(
         currentMessage,
         storage,
         (event) => {
+          if (event.type === "abort") {
+            wasAborted = true;
+          }
           ws.send({
             event,
             sessionId,
@@ -435,7 +441,7 @@ export async function runAgentStream(
       // (hadPendingGate), the run is conversational — the agent is responding
       // to the user's chat, not stalling. Skip the reminder entirely.
       const phase = autonomousPhaseForSession(session);
-      if (phase && stalls < MAX_REMINDERS && !hadPendingGate) {
+      if (phase && stalls < MAX_REMINDERS && !hadPendingGate && !wasAborted) {
         stalls++;
         currentMessage = await buildProgressAwareReminder(ctx, session, phase, stalls);
         continue;
