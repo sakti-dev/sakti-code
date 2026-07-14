@@ -39,11 +39,12 @@ Both workflows follow the same phase sequence. The `workflow` field only selects
 Agents move between phases by calling:
 
 ```
-transition({ to: "specify" | "build" | "verify" | "archive" | "mission", body: string, preserveUnrelated?: "stash" })
+transition({ to: "specify" | "build" | "verify" | "archive" | "mission", body: string, branchName?: string, preserveUnrelated?: "stash" })
 ```
 
 - The agent's **only job is deciding the destination** based on its judgment. It does **not** decide whether the transition is gated.
 - `body` carries the handoff payload (mission brief, fixing plan, completion/verify summary).
+- `branchName` is for `to="mission"` only: a git branch name with a conventional prefix (`feat/`, `fix/`, `refactor/`, `docs/`, `chore/`). Example: `"feat/codegraph-integration"`. Omit to default to `sakti/<changeName>`.
 - `preserveUnrelated` is an explicit opt-in for plan→mission only: when set to `"stash"`, the server stashes unrelated dirty paths before opening the mission gate (see [Worktree isolation](#worktree-isolation)).
 - The call ends the agent's turn (`terminate: true`). It is a pure signal — the server owns all policy and side-effects.
 
@@ -181,7 +182,7 @@ Mission worktrees are created under the sakti data directory (not as sibling dir
 ~/.sakti/projects/<projectBasename>--<changeName>
 ```
 
-If two projects share a basename and change name, `--<projectId[:8]>` is appended to disambiguate. The worktree branch is `sakti/<changeName>` (reused if it already exists from a prior mission).
+If two projects share a basename and change name, `--<projectId[:8]>` is appended to disambiguate. The worktree branch defaults to `sakti/<changeName>` (reused if it already exists from a prior mission), or a custom name (e.g. `feat/<changeName>`, `fix/<changeName>`) when the agent provides `branchName` in the transition tool call.
 
 ### Graduation sequence (plan → mission)
 
@@ -202,6 +203,10 @@ If any step after worktree creation fails (absorb, symlink, clean), the server:
 - Restores a pre-existing `sakti/<changeName>` branch to its original HEAD via `git branch -f`.
 - Deletes a newly-created branch entirely.
 - Re-throws the error. The pending transition stays set for retry.
+
+### `.sakti.yaml` phase sync
+
+The worktree's `.sakti/changes/<change>/.sakti.yaml` is synced on every transition — `applyTransition` writes the new phase to match the DB status. This keeps `sakti state get phase` accurate inside the worktree. Only the worktree copy is touched (the main project's change dir was cleaned at graduation and only returns via merge).
 
 ### Clean-tree guardrail (transition tool)
 
