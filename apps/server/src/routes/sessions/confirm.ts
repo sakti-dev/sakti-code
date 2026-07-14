@@ -4,6 +4,7 @@ import Type from "typebox";
 import { applyTransition } from "../../agent/config/transition-apply.ts";
 import { buildForceReset } from "../../agent/config/force-reset.ts";
 import { buildGraduation } from "../../agent/config/graduation.ts";
+import { buildSyncSddPhase } from "../../agent/config/sync-sdd-phase.ts";
 import {
   getEdge,
   hasEdge,
@@ -120,12 +121,14 @@ export const confirmRoutes = new Hono()
         const worktreeTeardown = edge.requiresWorktreeTeardown
           ? buildWorktreeTeardown(ctx, existing)
           : undefined;
+        const syncSddPhase = buildSyncSddPhase(existing, ctx.log);
         await applyTransition(
           {
             repos: ctx.repos,
             ...(forceReset !== undefined ? { forceReset } : {}),
             ...(graduate !== undefined ? { graduate } : {}),
             ...(worktreeTeardown !== undefined ? { worktreeTeardown } : {}),
+            ...(syncSddPhase !== undefined ? { syncSddPhase } : {}),
             ...(ctx.log !== undefined ? { log: ctx.log } : {}),
           },
           existing,

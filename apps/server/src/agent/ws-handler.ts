@@ -12,6 +12,7 @@ import { getPermissionChannel } from "../lib/permission-channel.ts";
 import { applyTransition } from "./config/transition-apply.ts";
 import { buildForceReset } from "./config/force-reset.ts";
 import { buildGraduation } from "./config/graduation.ts";
+import { buildSyncSddPhase } from "./config/sync-sdd-phase.ts";
 import { getEdge, hasEdge, phaseFromSession, type Phase } from "./config/transition-table.ts";
 import { autonomousPhaseForSession, buildReminder } from "./reminder.ts";
 import {
@@ -509,12 +510,14 @@ export async function runAgentStream(
       edge.requiresGraduation && session.kind === "plan"
         ? buildGraduation(ctx, session)
         : undefined;
+    const syncSddPhase = buildSyncSddPhase(session, ctx.log);
     try {
       await applyTransition(
         {
           repos: ctx.repos,
           ...(forceReset !== undefined ? { forceReset } : {}),
           ...(graduate !== undefined ? { graduate } : {}),
+          ...(syncSddPhase !== undefined ? { syncSddPhase } : {}),
           ...(ctx.log !== undefined ? { log: ctx.log } : {}),
         },
         session,
