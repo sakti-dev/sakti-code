@@ -15,6 +15,8 @@ export interface TransitionApplyCtx {
   graduate?: (sessionId: string) => Promise<void>;
   /** Bound worktree teardown (archive→done). Best-effort. */
   worktreeTeardown?: (sessionId: string) => Promise<void>;
+  /** Bound .sakti.yaml phase sync (worktree only). Best-effort. */
+  syncSddPhase?: (phase: string) => Promise<void>;
   log?: {
     agent?: {
       warn?: (msg: string, ctx?: Record<string, unknown>) => void;
@@ -77,5 +79,20 @@ export async function applyTransition(
   // Status flip — the durable intent. Runs last so observe/graduation precede it.
   if (edge.statusTarget) {
     await ctx.repos.sessions.update(session.id, { status: edge.statusTarget });
+  }
+
+  // Sync .sakti.yaml phase in the worktree (best-effort). Only for edges
+  // with a statusTarget (build/verify/archive — not done, which tears down
+  // the worktree). Runs AFTER the status flip so the DB is already correct.
+  if (edge.statusTarget && edge.statusTarget !== "done" && ctx.syncSddPhase) {
+    try {
+      await ctx.syncSddPhase(edge.statusTarget);
+    } catch (err) {
+      ctx.log?.agent?.warn?.("transition: sync .sakti.yaml phase failed (continuing)", {
+        sessionId: session.id,
+        phase: edge.statusTarget,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 }

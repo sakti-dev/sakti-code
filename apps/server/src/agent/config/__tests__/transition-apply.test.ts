@@ -125,4 +125,54 @@ describe("applyTransition", () => {
     );
     expect(calls).toEqual(["teardown"]);
   });
+
+  it("calls syncSddPhase after the status flip with the new phase", async () => {
+    const order: string[] = [];
+    const ctx = {
+      repos: {
+        sessions: {
+          update: vi.fn(async (_id: string, data: Record<string, unknown>) => {
+            order.push(`status:${JSON.stringify(data)}`);
+          }),
+        },
+      },
+      syncSddPhase: vi.fn(async (phase: string) => {
+        order.push(`sync:${phase}`);
+      }),
+      log: { agent: { warn: vi.fn(), info: vi.fn() } },
+    } as unknown as Parameters<typeof applyTransition>[0];
+    const edge = getEdge("build", "verify");
+    await applyTransition(ctx, session({ status: "build" }), edge);
+    expect(order).toEqual(['status:{"status":"verify"}', "sync:verify"]);
+  });
+
+  it("syncSddPhase failure is swallowed (status flip already landed)", async () => {
+    const ctx = {
+      repos: {
+        sessions: {
+          update: vi.fn(async () => ({})),
+        },
+      },
+      syncSddPhase: vi.fn(async () => {
+        throw new Error("yaml locked");
+      }),
+      log: { agent: { warn: vi.fn(), info: vi.fn() } },
+    } as unknown as Parameters<typeof applyTransition>[0];
+    const edge = getEdge("verify", "archive");
+    await expect(
+      applyTransition(ctx, session({ status: "verify" }), edge),
+    ).resolves.toBeUndefined();
+    expect(ctx.log?.agent?.warn).toHaveBeenCalled();
+  });
+
+  it("syncSddPhase is not called when edge has no statusTarget", async () => {
+    const syncSddPhase = vi.fn(async () => {});
+    const ctx = {
+      repos: { sessions: { update: async () => {} } },
+      syncSddPhase,
+    } as unknown as Parameters<typeof applyTransition>[0];
+    const edge = getEdge("plan", "mission");
+    await applyTransition(ctx, session({ kind: "plan" }), edge);
+    expect(syncSddPhase).not.toHaveBeenCalled();
+  });
 });
