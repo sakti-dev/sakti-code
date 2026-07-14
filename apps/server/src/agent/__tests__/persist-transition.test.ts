@@ -147,6 +147,36 @@ describe("persistTransitionSideEffect", () => {
     ]);
   });
 
+  it("persists branchName when provided in transition args", async () => {
+    const { ctx, updates } = makeCtx();
+    const pending = new Map() as PendingTransitionToolCalls;
+    await persistTransitionSideEffect(
+      ctx,
+      "s1",
+      transitionStart({ to: "mission", body: "brief", branchName: "feat/my-thing" }),
+      pending,
+    );
+    await persistTransitionSideEffect(ctx, "s1", transitionEnd({ terminate: true }), pending);
+    expect(updates[0]?.data).toEqual({
+      pendingTransitionTo: "mission",
+      pendingTransitionBody: "brief",
+      pendingBranchName: "feat/my-thing",
+    });
+  });
+
+  it("does not include pendingBranchName when branchName is absent", async () => {
+    const { ctx, updates } = makeCtx();
+    const pending = new Map() as PendingTransitionToolCalls;
+    await persistTransitionSideEffect(
+      ctx,
+      "s1",
+      transitionStart({ to: "verify", body: "done" }),
+      pending,
+    );
+    await persistTransitionSideEffect(ctx, "s1", transitionEnd({ terminate: true }), pending);
+    expect(updates[0]?.data).not.toHaveProperty("pendingBranchName");
+  });
+
   it("swallows update errors (never throws off the event stream)", async () => {
     const errorFn = vi.fn();
     const ctx = {

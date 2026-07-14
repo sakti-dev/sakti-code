@@ -240,6 +240,7 @@ export const wsResponseSchema = Type.Union([
 interface TransitionToolArgs {
   body: string;
   to: string;
+  branchName?: string;
 }
 
 export type PendingTransitionToolCalls = Map<string, TransitionToolArgs>;
@@ -279,9 +280,13 @@ export async function persistTransitionSideEffect(
     return;
   }
   if (event.type === "tool_execution_start") {
-    const args = event.args as { to?: unknown; body?: unknown };
+    const args = event.args as { to?: unknown; body?: unknown; branchName?: unknown };
     if (typeof args.to === "string" && typeof args.body === "string") {
-      pendingTransitionToolCalls.set(event.toolCallId, { to: args.to, body: args.body });
+      pendingTransitionToolCalls.set(event.toolCallId, {
+        to: args.to,
+        body: args.body,
+        ...(typeof args.branchName === "string" ? { branchName: args.branchName } : {}),
+      });
     }
     return;
   }
@@ -297,6 +302,7 @@ export async function persistTransitionSideEffect(
     await ctx.repos.sessions.update(sessionId, {
       pendingTransitionTo: args.to,
       pendingTransitionBody: args.body,
+      ...(args.branchName !== undefined ? { pendingBranchName: args.branchName } : {}),
     });
   } catch (err) {
     ctx.log?.server.error?.("failed to persist pending transition", err, {
