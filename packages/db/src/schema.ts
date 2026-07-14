@@ -38,6 +38,7 @@ export const sessions = sqliteTable("sessions", {
   // Cleared on the next run. Nullable — null means no pending transition.
   pendingTransitionTo: text("pending_transition_to"),
   pendingTransitionBody: text("pending_transition_body"),
+  pendingBranchName: text("pending_branch_name"),
   thinkingLevel: text("thinking_level").notNull().default("off"),
   leafId: text("leaf_id"),
   createdAt: integer("created_at").notNull(),

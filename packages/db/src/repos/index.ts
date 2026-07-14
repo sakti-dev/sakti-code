@@ -68,6 +68,7 @@ export class SessionRepo {
       worktreePath?: string | null;
       pendingTransitionTo?: string | null;
       pendingTransitionBody?: string | null;
+      pendingBranchName?: string | null;
     },
   ) {
     const id = crypto.randomUUID();
@@ -92,6 +93,9 @@ export class SessionRepo {
       ...(options?.pendingTransitionBody === undefined
         ? {}
         : { pendingTransitionBody: options.pendingTransitionBody }),
+      ...(options?.pendingBranchName === undefined
+        ? {}
+        : { pendingBranchName: options.pendingBranchName }),
       createdAt: now,
       updatedAt: now,
     });
@@ -150,6 +154,7 @@ export class SessionRepo {
         | "worktreePath"
         | "pendingTransitionTo"
         | "pendingTransitionBody"
+        | "pendingBranchName"
       >
     >,
   ) {

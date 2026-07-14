@@ -1,0 +1,1 @@
+ALTER TABLE `sessions` ADD `pending_branch_name` text;
