@@ -404,4 +404,52 @@ describe("worktree ops", () => {
       expect(missionBranchHead(projectDir, "add-feature")).toBe(original);
     });
   });
+
+  describe("custom branch names", () => {
+    it("createMissionWorktree uses custom branch when provided", () => {
+      initGitRepo(projectDir);
+      createMissionWorktree(projectDir, "p1", "my-feature", "feat/my-feature");
+      const branches = execSync("git branch --list", {
+        cwd: projectDir,
+        shell: "/bin/sh",
+        encoding: "utf-8",
+      });
+      expect(branches).toContain("feat/my-feature");
+      expect(branches).not.toContain("sakti/my-feature");
+    });
+
+    it("createMissionWorktree falls back to sakti/ prefix when no branchName", () => {
+      initGitRepo(projectDir);
+      createMissionWorktree(projectDir, "p1", "my-feature");
+      const branches = execSync("git branch --list", {
+        cwd: projectDir,
+        shell: "/bin/sh",
+        encoding: "utf-8",
+      });
+      expect(branches).toContain("sakti/my-feature");
+    });
+
+    it("missionBranchExists checks custom branch", () => {
+      initGitRepo(projectDir);
+      createMissionWorktree(projectDir, "p1", "my-feature", "feat/my-feature");
+      expect(missionBranchExists(projectDir, "my-feature", "feat/my-feature")).toBe(true);
+      expect(missionBranchExists(projectDir, "my-feature")).toBe(false);
+    });
+
+    it("missionBranchHead returns HEAD of custom branch", () => {
+      initGitRepo(projectDir);
+      createMissionWorktree(projectDir, "p1", "my-feature", "fix/my-feature");
+      const head = missionBranchHead(projectDir, "my-feature", "fix/my-feature");
+      expect(head).not.toBeNull();
+    });
+
+    it("deleteMissionBranch deletes custom branch", () => {
+      initGitRepo(projectDir);
+      const wtPath = createMissionWorktree(projectDir, "p1", "my-feature", "feat/my-feature");
+      expect(missionBranchExists(projectDir, "my-feature", "feat/my-feature")).toBe(true);
+      removeMissionWorktree(projectDir, wtPath);
+      deleteMissionBranch(projectDir, "my-feature", "feat/my-feature");
+      expect(missionBranchExists(projectDir, "my-feature", "feat/my-feature")).toBe(false);
+    });
+  });
 });

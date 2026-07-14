@@ -211,36 +211,61 @@ function branchExists(cwd: string, branch: string): boolean {
   }
 }
 
-/** Does the mission branch `sakti/<changeName>` exist for the repo at `cwd`? */
-export function missionBranchExists(projectCwd: string, changeName: string): boolean {
-  assertSafeChangeName(changeName);
-  return branchExists(projectCwd, `sakti/${changeName}`);
+/**
+ * Resolve the git branch name for a change. Falls back to `sakti/<changeName>`
+ * for backward compatibility when no custom branchName is provided.
+ */
+function resolveBranchName(changeName: string, branchName?: string): string {
+  return branchName ?? `sakti/${changeName}`;
 }
 
-/** Returns the current HEAD sha of `sakti/<changeName>`, or null if absent. */
-export function missionBranchHead(projectCwd: string, changeName: string): string | null {
+/** Does the mission branch exist for the repo at `cwd`? */
+export function missionBranchExists(
+  projectCwd: string,
+  changeName: string,
+  branchName?: string,
+): boolean {
+  assertSafeChangeName(changeName);
+  return branchExists(projectCwd, resolveBranchName(changeName, branchName));
+}
+
+/** Returns the current HEAD sha of the mission branch, or null if absent. */
+export function missionBranchHead(
+  projectCwd: string,
+  changeName: string,
+  branchName?: string,
+): string | null {
   assertSafeChangeName(changeName);
   try {
-    return git(projectCwd, `rev-parse refs/heads/sakti/${changeName}`);
+    return git(projectCwd, `rev-parse refs/heads/${resolveBranchName(changeName, branchName)}`);
   } catch {
     return null;
   }
 }
 
-/** Force-reset `sakti/<changeName>` to the given commit (used for rollback). */
-export function resetMissionBranch(projectCwd: string, changeName: string, head: string): void {
+/** Force-reset the mission branch to the given commit (used for rollback). */
+export function resetMissionBranch(
+  projectCwd: string,
+  changeName: string,
+  head: string,
+  branchName?: string,
+): void {
   assertSafeChangeName(changeName);
-  git(projectCwd, `branch -f sakti/${changeName} ${shellQuote(head)}`);
+  git(projectCwd, `branch -f ${resolveBranchName(changeName, branchName)} ${shellQuote(head)}`);
 }
 
 /**
  * Delete a mission branch created during a failed graduation. Never call this
  * for branches that existed before the current graduation attempt.
  */
-export function deleteMissionBranch(projectCwd: string, changeName: string): void {
+export function deleteMissionBranch(
+  projectCwd: string,
+  changeName: string,
+  branchName?: string,
+): void {
   assertSafeChangeName(changeName);
   try {
-    git(projectCwd, `branch -D sakti/${changeName}`);
+    git(projectCwd, `branch -D ${resolveBranchName(changeName, branchName)}`);
   } catch {
     // Best-effort; the branch may already be gone.
   }
@@ -250,14 +275,16 @@ export function deleteMissionBranch(projectCwd: string, changeName: string): voi
  * Create a git worktree + branch for a mission. Returns the absolute worktree
  * path. Throws on failure (caller decides how to surface).
  *
- * Reuses an existing `sakti/<changeName>` branch when one survives (e.g. a
- * prior archived mission kept it for merge/review) instead of hard-failing on
+ * When `branchName` is provided, uses it instead of the default `sakti/<changeName>`
+ * prefix. Reuses an existing branch when one survives (e.g. a prior archived
+ * mission kept it for merge/review) instead of hard-failing on
  * `worktree add -b`; otherwise creates a fresh branch off the default branch.
  */
 export function createMissionWorktree(
   projectCwd: string,
   projectId: string,
   changeName: string,
+  branchName?: string,
 ): string {
   assertSafeChangeName(changeName);
   const base = getWorktreeBaseDir();
@@ -268,8 +295,8 @@ export function createMissionWorktree(
     // ignore
   }
   const wtPath = worktreePathFor(base, projectCwd, projectId, changeName);
-  const branch = `sakti/${changeName}`;
-  if (missionBranchExists(projectCwd, changeName)) {
+  const branch = resolveBranchName(changeName, branchName);
+  if (branchExists(projectCwd, branch)) {
     git(projectCwd, `worktree add "${wtPath}" ${branch}`);
   } else {
     const detected = detectDefaultBranch(projectCwd);
