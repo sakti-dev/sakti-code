@@ -10,6 +10,12 @@ const transitionSchema = Type.Object({
     description:
       "Context that travels with the transition — a mission brief (to: mission), a spec summary (to: build), a completion summary (to: verify), a fixing plan (to: build from verify), or a verify summary (to: archive). Always end your turn after calling transition.",
   }),
+  branchName: Type.Optional(
+    Type.String({
+      description:
+        'For to="mission" only. A git branch name with a conventional prefix: feat/ (new capability), fix/ (bug fix), refactor/, docs/, chore/. Example: "feat/codegraph-integration". Omit to let the server default based on workflow classification.',
+    }),
+  ),
   preserveUnrelated: Type.Optional(
     Type.Literal("stash", {
       description:
