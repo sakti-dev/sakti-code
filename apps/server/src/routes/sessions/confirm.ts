@@ -76,7 +76,12 @@ export const confirmRoutes = new Hono()
               const branchHeadBefore = missionBranchHead(project.cwd, changeName);
               let wtPath: string | null = null;
               try {
-                wtPath = createMissionWorktree(project.cwd, existing.projectId, changeName);
+                wtPath = createMissionWorktree(
+                  project.cwd,
+                  existing.projectId,
+                  changeName,
+                  existing.pendingBranchName ?? undefined,
+                );
                 absorbChangeContent(project.cwd, wtPath, changeName);
                 const depDirs = resolveDependencySymlinkDirs(ctx.settingsFile.read());
                 if (depDirs.warning) {
@@ -147,6 +152,7 @@ export const confirmRoutes = new Hono()
     await ctx.repos.sessions.update(id, {
       pendingTransitionTo: null,
       pendingTransitionBody: null,
+      pendingBranchName: null,
     });
     const updated = ctx.repos.sessions.findById(id) ?? existing;
     if (action === "approve") {

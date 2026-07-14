@@ -365,6 +365,7 @@ export async function runAgentStream(
       await ctx.repos.sessions.update(sessionId, {
         pendingTransitionTo: null,
         pendingTransitionBody: null,
+        pendingBranchName: null,
       });
     } catch (err) {
       ctx.log?.server.warn?.("failed to clear pending transition on run start", {
@@ -564,6 +565,7 @@ async function clearPendingTransition(ctx: ServerContext, sessionId: string): Pr
     await ctx.repos.sessions.update(sessionId, {
       pendingTransitionTo: null,
       pendingTransitionBody: null,
+      pendingBranchName: null,
     });
   } catch {
     // Swallow — clearing is best-effort.
